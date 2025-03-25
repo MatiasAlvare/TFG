@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.example.tfg_matias.R
 
 @Composable
-fun HomeScreen(
+fun Principal(
     userName: String = "Usuario",
     onHomeClick: () -> Unit = {},
     onPublishCarClick: () -> Unit = {},

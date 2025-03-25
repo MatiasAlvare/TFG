@@ -12,13 +12,18 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.tfg_matias.NavRoutes
 import com.example.tfg_matias.R
+
+
 
 @Composable
 fun Resgistrarse(
+    navController: NavController,
     onGoogleSignIn: () -> Unit = {},
+    onRegisterCompleted: () -> Unit = {},
     onResgisterClick: (nombre : String, gmail: String, password: String, keepSession: Boolean) -> Unit = { _,_, _, _ -> },
-    onRegisterClick: () -> Unit = {}
 ) {
     // 1) Estados
     var nombre by remember { mutableStateOf(" ")}
@@ -104,7 +109,7 @@ fun Resgistrarse(
 
         OutlinedTextField(
             value = nombre,
-            onValueChange = { gmail = it
+            onValueChange = { nombre = it
                 if (nombreError) nombreError = false},
             label = { Text("Nombre *") },
             placeholder = { Text("Nombre *") },
@@ -187,9 +192,10 @@ fun Resgistrarse(
 
         Spacer(Modifier.height(16.dp))
 
-        // 9) Botón de Iniciar sesión
+        // 9) Botón de Registrarse
         Button(
             onClick = {
+                onRegisterCompleted()
                 // Primero validamos si email o password están vacíos
                 val isEmailEmpty = gmail.isBlank()
                 val isPasswordEmpty = password.isBlank()
@@ -217,9 +223,9 @@ fun Resgistrarse(
             )
         }
 
-        // 10) Botón de "¿Aún no tienes cuenta?"
+        // 10) Botón de "¿Ya tienes cuenta?"
         OutlinedButton(
-            onClick = onRegisterClick,
+            onClick = { navController.navigate(NavRoutes.Login.route) },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
@@ -233,3 +239,5 @@ fun Resgistrarse(
         }
     }
 }
+
+
