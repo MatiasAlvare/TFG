@@ -21,9 +21,9 @@ import com.example.tfg_matias.R
 @Composable
 fun Resgistrarse(
     navController: NavController,
+    onResgisterClick: (nombre : String, gmail: String, password: String, keepSession: Boolean) -> Unit = { _,_, _, _ -> },
     onGoogleSignIn: () -> Unit = {},
     onRegisterCompleted: () -> Unit = {},
-    onResgisterClick: (nombre : String, gmail: String, password: String, keepSession: Boolean) -> Unit = { _,_, _, _ -> },
 ) {
     // 1) Estados
     var nombre by remember { mutableStateOf(" ")}
@@ -106,7 +106,7 @@ fun Resgistrarse(
         }
 
         Spacer(Modifier.height(16.dp))
-
+        //Campo nombre
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it
@@ -196,19 +196,21 @@ fun Resgistrarse(
         Button(
             onClick = {
                 onRegisterCompleted()
-                // Primero validamos si email o password están vacíos
+                // Primero validamos si el nombre, email y la password están vacíos
+                val isNombreEmpty = nombre.isBlank()
                 val isEmailEmpty = gmail.isBlank()
                 val isPasswordEmpty = password.isBlank()
 
+                nombreError = isNombreEmpty
                 emailError = isEmailEmpty
                 passwordError = isPasswordEmpty
 
-                // Si ninguno de los dos está vacío, llamamos a onLoginClick
-                if (!emailError && !passwordError) {
+                // Si ninguno de los dos está vacío, llamamos a onResgisterClick
+                if (!nombreError && !emailError && !passwordError) {
                     onResgisterClick(nombre,gmail, password, keepSession)
                 }
                 // Si algún campo está vacío, se marcarán los errores
-                // y no llamamos a onLoginClick
+                // y no llamamos a onResgisterClick
             },
             colors = ButtonDefaults.buttonColors(containerColor = primaryRed),
             modifier = Modifier
