@@ -131,7 +131,7 @@ fun LoginScreen(
             value = password,
             onValueChange = { password = it
                 if (passwordError) passwordError = false},
-            label = { Text("Contraseña") },
+            label = { Text("Contraseña *") },
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_candado),

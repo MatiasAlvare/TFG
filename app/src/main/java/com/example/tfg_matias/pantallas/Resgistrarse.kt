@@ -26,7 +26,7 @@ fun Resgistrarse(
     onRegisterCompleted: () -> Unit = {},
 ) {
     // 1) Estados
-    var nombre by remember { mutableStateOf(" ")}
+    var nombre by remember { mutableStateOf("")}
     var gmail by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var keepSession by remember { mutableStateOf(false) }
@@ -152,7 +152,7 @@ fun Resgistrarse(
             value = password,
             onValueChange = { password = it
                 if (passwordError) passwordError = false},
-            label = { Text("Contraseña") },
+            label = { Text("Contraseña *") },
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_candado),
@@ -195,7 +195,6 @@ fun Resgistrarse(
         // 9) Botón de Registrarse
         Button(
             onClick = {
-                onRegisterCompleted()
                 // Primero validamos si el nombre, email y la password están vacíos
                 val isNombreEmpty = nombre.isBlank()
                 val isEmailEmpty = gmail.isBlank()
@@ -208,6 +207,7 @@ fun Resgistrarse(
                 // Si ninguno de los dos está vacío, llamamos a onResgisterClick
                 if (!nombreError && !emailError && !passwordError) {
                     onResgisterClick(nombre,gmail, password, keepSession)
+                    onRegisterCompleted()
                 }
                 // Si algún campo está vacío, se marcarán los errores
                 // y no llamamos a onResgisterClick
