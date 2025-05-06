@@ -1,3 +1,7 @@
+package com.example.tfg_matias.pantallas
+
+import android.app.Application
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -5,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -12,37 +17,41 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.tfg_matias.NavRoutes
 import com.example.tfg_matias.R
-
+import com.example.tfg_matias.navegacion.NavRoutes
+import com.example.tfg_matias.utilidades.AuthRes
+import com.example.tfg_matias.utilidades.AuthViewModel
 
 
 @Composable
-fun Resgistrarse(
+fun Registrarse(
     navController: NavController,
-    onResgisterClick: (nombre : String, gmail: String, password: String, keepSession: Boolean) -> Unit = { _,_, _, _ -> },
     onGoogleSignIn: () -> Unit = {},
-    onRegisterCompleted: () -> Unit = {},
+    onRegisterCompleted: () -> Unit = {}
 ) {
-    // 1) Estados
-    var nombre by remember { mutableStateOf("")}
-    var gmail by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val vm: AuthViewModel = viewModel(
+        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+            context.applicationContext as Application
+        )
+    )
+    val authResult by vm.authResult.collectAsState()
+
+    var nombre by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var keepSession by remember { mutableStateOf(false) }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
-    // Estados de error
-    var nombreError by remember { mutableStateOf(false)}
+    var nombreError by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf(false) }
     var passwordError by remember { mutableStateOf(false) }
 
-    // 2) Colores ejemplo
     val primaryRed = Color(0xFFFF0000)
-    val textColor = Color.Black
-    val googleButtonBg = Color(0xFFEEEEEE)
+    val googleBg = Color(0xFFEEEEEE)
 
-    // 3) Layout principal
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -50,54 +59,50 @@ fun Resgistrarse(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         Text(
-            text = "Resgistrarse",
+            "Registrarse",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp
-            ),
-            color = textColor
+            )
         )
 
         Spacer(Modifier.height(24.dp))
 
-        // 4) Botón "Continuar con Google"
+        // Google button
         Button(
             onClick = onGoogleSignIn,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = googleButtonBg),
+            colors = ButtonDefaults.buttonColors(containerColor = googleBg),
             shape = RoundedCornerShape(8.dp)
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_google), // tu icono
-                contentDescription = "Google Icon",
-                tint = Color.Unspecified,
-                modifier = Modifier.size(20.dp)
+                painter = painterResource(id = R.drawable.ic_google),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = Color.Unspecified
             )
             Spacer(Modifier.width(8.dp))
-            Text(text = "Continuar con Google", color = Color.Black)
+            Text("Continuar con Google", color = Color.Black)
         }
 
-        // 5) Separador
         Spacer(Modifier.height(16.dp))
+
+        // Divider “o”
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 8.dp)
         ) {
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier
                     .weight(1f)
                     .height(1.dp),
                 color = Color.Gray
             )
-            Text(
-                text = "  o  ",
-                style = TextStyle(color = Color.Gray, fontSize = 14.sp)
-            )
-            Divider(
+            Text("  o  ", style = TextStyle(color = Color.Gray, fontSize = 14.sp))
+            HorizontalDivider(
                 modifier = Modifier
                     .weight(1f)
                     .height(1.dp),
@@ -106,85 +111,99 @@ fun Resgistrarse(
         }
 
         Spacer(Modifier.height(16.dp))
-        //Campo nombre
+
+        // Nombre field
         OutlinedTextField(
             value = nombre,
-            onValueChange = { nombre = it
-                if (nombreError) nombreError = false},
+            onValueChange = {
+                nombre = it
+                if (nombreError) nombreError = false
+            },
             label = { Text("Nombre *") },
-            placeholder = { Text("Nombre *") },
-
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_usuario),
-                    contentDescription = "Icono usuario",
+                    contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
             },
-            modifier = Modifier.fillMaxWidth(),
-            isError = nombreError
+            isError = nombreError,
+            modifier = Modifier.fillMaxWidth()
         )
+        if (nombreError) {
+            Text(
+                "El nombre no puede estar vacío",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
 
         Spacer(Modifier.height(8.dp))
 
-        // 6) Campo Email
+        // Email field
         OutlinedTextField(
-            value = gmail,
-            onValueChange = { gmail = it
-                if (emailError) emailError = false},
+            value = email,
+            onValueChange = {
+                email = it
+                if (emailError) emailError = false
+            },
             label = { Text("Email *") },
-
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_gmail),
-                    contentDescription = "Icono gmail",
+                    contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
             },
-            modifier = Modifier.fillMaxWidth(),
-            isError = emailError
+            isError = emailError,
+            modifier = Modifier.fillMaxWidth()
         )
+        if (emailError) {
+            Text(
+                "Email inválido (debe contener @)",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
 
         Spacer(Modifier.height(8.dp))
 
-        // 7) Campo Contraseña
+        // Password field
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it
-                if (passwordError) passwordError = false},
+            onValueChange = {
+                password = it
+                if (passwordError) passwordError = false
+            },
             label = { Text("Contraseña *") },
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_candado),
-                    contentDescription = "Icono candado",
+                    contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
             },
             trailingIcon = {
-                IconButton(
-                    onClick = { isPasswordVisible = !isPasswordVisible }
-                ) {
+                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     Icon(
                         painter = painterResource(
-                            id = if (isPasswordVisible) R.drawable.ic_ojo_abierto
-                            else R.drawable.ic_ojo
+                            id = if (isPasswordVisible) R.drawable.ic_ojo_abierto else R.drawable.ic_ojo
                         ),
-                        contentDescription = "Icono para mostrar/ocultar contraseña",
+                        contentDescription = null,
                         modifier = Modifier.size(20.dp)
                     )
                 }
             },
-            visualTransformation = if (isPasswordVisible) {
+            visualTransformation = if (isPasswordVisible)
                 VisualTransformation.None
-            } else {
-                PasswordVisualTransformation()
-            },
-            modifier = Modifier.fillMaxWidth(),
+            else
+                PasswordVisualTransformation(),
             isError = passwordError,
-            )
-            if (passwordError) {
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (passwordError) {
             Text(
-                text = "La contraseña no puede estar vacía",
+                "La contraseña no puede estar vacía",
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.labelSmall
             )
@@ -192,25 +211,18 @@ fun Resgistrarse(
 
         Spacer(Modifier.height(16.dp))
 
-        // 9) Botón de Registrarse
+        // Register button
         Button(
             onClick = {
-                // Primero validamos si el nombre, email y la password están vacíos
-                val isNombreEmpty = nombre.isBlank()
-                val isEmailEmpty = gmail.isBlank()
-                val isPasswordEmpty = password.isBlank()
-
-                nombreError = isNombreEmpty
-                emailError = isEmailEmpty
-                passwordError = isPasswordEmpty
-
-                // Si ninguno de los dos está vacío, llamamos a onResgisterClick
+                nombreError = nombre.isBlank()
+                emailError = email.isBlank() || !email.contains("@")
+                passwordError = password.isBlank()
                 if (!nombreError && !emailError && !passwordError) {
-                    onResgisterClick(nombre,gmail, password, keepSession)
-                    onRegisterCompleted()
+                    vm.nombre = nombre
+                    vm.email = email
+                    vm.password = password
+                    vm.register()
                 }
-                // Si algún campo está vacío, se marcarán los errores
-                // y no llamamos a onResgisterClick
             },
             colors = ButtonDefaults.buttonColors(containerColor = primaryRed),
             modifier = Modifier
@@ -219,25 +231,41 @@ fun Resgistrarse(
             shape = RoundedCornerShape(8.dp)
         ) {
             Text(
-                text = "Resgistrarse",
+                "Registrarse",
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
             )
         }
 
-        // 10) Botón de "¿Ya tienes cuenta?"
+        Spacer(Modifier.height(8.dp))
+
+        // “¿Ya tienes cuenta?”
         OutlinedButton(
             onClick = { navController.navigate(NavRoutes.Login.route) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "¿Ya tienes cuenta?",
-                style = TextStyle(
-                    color = Color.Black,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                "¿Ya tienes cuenta?",
+                style = TextStyle(color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             )
+        }
+    }
+
+    LaunchedEffect(authResult) {
+        when (authResult) {
+            is AuthRes.Success -> {
+                onRegisterCompleted()
+                vm.clearAuthResult()
+            }
+            is AuthRes.Error -> {
+                Toast.makeText(
+                    context,
+                    (authResult as AuthRes.Error).errorMessage,
+                    Toast.LENGTH_LONG
+                ).show()
+                vm.clearAuthResult()
+            }
+            else -> {}
         }
     }
 }
