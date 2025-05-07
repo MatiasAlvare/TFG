@@ -1,3 +1,4 @@
+// AuthViewModel.kt
 package com.example.tfg_matias.utilidades
 
 import android.app.Activity
@@ -10,53 +11,75 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 sealed class AuthRes {
+    object Idle    : AuthRes()
+    object Loading : AuthRes()
     object Success : AuthRes()
-    data class Error(val errorMessage: String?) : AuthRes()
+    data class Error(val errorMessage: String) : AuthRes()
 }
 
-class AuthViewModel(application: Application) : AndroidViewModel(application) {
-    private val manager      = FirebaseAuthManager()
-    private val _authResult  = MutableStateFlow<AuthRes?>(null)
-    val authResult: StateFlow<AuthRes?> = _authResult
+class AuthViewModel(
+    application: Application
+) : AndroidViewModel(application) {
 
+    private val webClientId = "TU_WEB_CLIENT_ID.apps.googleusercontent.com"
+    private val manager     = FirebaseAuthManager(webClientId)
+
+    // Estado general de auth (login/register/google)
+    private val _authResult = MutableStateFlow<AuthRes>(AuthRes.Idle)
+    val authResult: StateFlow<AuthRes> = _authResult
+
+    // Estado de reset de contraseña
     private val _resetResult = MutableStateFlow<Boolean?>(null)
     val resetResult: StateFlow<Boolean?> = _resetResult
 
+    // Campos vinculados a tus TextFields
     var email: String    = ""
     var password: String = ""
     var nombre: String   = ""
 
+    // ─── Registro ────────────────────────────────────────────────────────────────
     fun register() = viewModelScope.launch {
+        _authResult.value = AuthRes.Loading
         manager.registerWithEmail(email, password, nombre) { ok, err ->
-            _authResult.value = if (ok) AuthRes.Success else AuthRes.Error(err)
+            _authResult.value = if (ok) AuthRes.Success else AuthRes.Error(err ?: "Error registro")
         }
     }
 
+    // ─── Login email/password ────────────────────────────────────────────────────
     fun login() = viewModelScope.launch {
+        _authResult.value = AuthRes.Loading
         manager.loginWithEmail(email, password) { ok, err ->
-            _authResult.value = if (ok) AuthRes.Success else AuthRes.Error(err)
+            _authResult.value = if (ok) AuthRes.Success else AuthRes.Error(err ?: "Error login")
         }
     }
 
-    fun sendPasswordResetEmail(trim: String) = viewModelScope.launch {
-        manager.sendPasswordResetEmail(email) { ok, err ->
-            _resetResult.value = ok
-            if (!ok) {
-                // Ver en Logcat desde el VM
-                android.util.Log.e("VM_RESET", "Reset failed: $err")
-            }
-        }
-    }
-
-    fun clearAuthResult()  { _authResult.value  = null }
-    fun clearResetResult() { _resetResult.value = null }
-
+    // ─── Google Sign-In ──────────────────────────────────────────────────────────
     fun getGoogleSignInIntent(activity: Activity): Intent =
         manager.getGoogleSignInIntent(activity)
 
     fun handleGoogleResponse(data: Intent?) = viewModelScope.launch {
+        _authResult.value = AuthRes.Loading
         manager.handleGoogleSignInResult(data) { ok, err ->
-            _authResult.value = if (ok) AuthRes.Success else AuthRes.Error(err)
+            _authResult.value = if (ok) AuthRes.Success else AuthRes.Error(err ?: "Error Google Sign-In")
         }
     }
+
+    // ─── Reset de contraseña ─────────────────────────────────────────────────────
+    /**
+     * Lanza el envío de reset de contraseña y actualiza [_resetResult].
+     */
+    fun sendPasswordResetEmail(email: String) {
+        // No corremos en coroutine: el Task lo maneja Firebase
+        manager.sendPasswordResetEmail(email)
+            .addOnSuccessListener {
+                _resetResult.value = true
+            }
+            .addOnFailureListener { e ->
+                _resetResult.value = false
+            }
+    }
+
+    // ─── Limpieza de estados ─────────────────────────────────────────────────────
+    fun clearAuthResult()  { _authResult.value  = AuthRes.Idle }
+    fun clearResetResult() { _resetResult.value = null       }
 }

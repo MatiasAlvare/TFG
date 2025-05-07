@@ -4,26 +4,19 @@
 )
 package com.example.tfg_matias.pantallas
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable             // <<<<<<<<<<<<<<<<<
+import androidx.compose.foundation.layout.FlowRow       // <<<<<<<<<<<<<<<<<
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,26 +27,26 @@ import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.R
 
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun Busqueda(
     cars: List<Coche>,
     onApplyFilters: (
         marca: String,
         modelo: String,
-        precioMin: String,
-        precioMax: String,
+        pMin: String,
+        pMax: String,
         ubicacion: String,
         vendedorTipo: String,
-        annoMin: String,
-        annoMax: String,
+        aMin: String,
+        aMax: String,
         kmMin: String,
         kmMax: String,
-        selectedCarrocerias: List<String>,
-        selectedCombustibles: List<String>,
-        soloElectricos: Boolean,
-        selectedEquipamientos: List<String>,
-        selectedColor: String
+        carroList: List<String>,
+        compList: List<String>,
+        soloElec: Boolean,
+        equipList: List<String>,
+        color: String
     ) -> Unit,
     onCarClick: (String) -> Unit
 ) {
@@ -104,15 +97,26 @@ fun Busqueda(
             }
         }
 
-        // Lista de coches
-        LazyColumn(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Grid de coches filtrados
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize()
         ) {
-            items(cars.filter { "${it.marca} ${it.modelo}".contains(query, true) }) { coche ->
-                CocheCard(coche) { onCarClick(coche.id) }
+            val filtered = cars.filter {
+                "${it.marca} ${it.modelo}".contains(query, ignoreCase = true)
+            }
+            items(filtered, key = { it.id }) { coche ->
+                CocheCard(
+                    coche = coche,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                ) {
+                    onCarClick(coche.id)
+                }
             }
         }
     }

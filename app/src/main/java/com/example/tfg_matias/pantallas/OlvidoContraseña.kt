@@ -2,24 +2,18 @@
 
 package com.example.tfg_matias.pantallas
 
-import android.util.Log
-import android.util.Patterns
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import com.example.tfg_matias.R
 import com.google.firebase.auth.FirebaseAuth
@@ -34,9 +28,7 @@ fun OlvidoContraseña(
     var emailError by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
 
-    // Colores según tu tema
     val primaryRed = Color(0xFFFF0000)
-    val textColor  = Color.Black
 
     Column(
         modifier = Modifier
@@ -47,11 +39,7 @@ fun OlvidoContraseña(
     ) {
         Text(
             text = "Restablece tu contraseña",
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontSize   = 24.sp,
-                color      = textColor,
-                fontWeight = FontWeight.Bold
-            )
+            style = MaterialTheme.typography.headlineSmall
         )
 
         Spacer(Modifier.height(24.dp))
@@ -66,8 +54,8 @@ fun OlvidoContraseña(
             leadingIcon = {
                 Icon(
                     painter           = painterResource(id = R.drawable.ic_gmail),
-                    contentDescription = "Icono email",
-                    modifier          = Modifier.size(20.dp)
+                    contentDescription = null,
+                    modifier          = Modifier.size(20.dp)   // tamaño original
                 )
             },
             isError = emailError,
@@ -87,10 +75,8 @@ fun OlvidoContraseña(
 
         Button(
             onClick = {
-                Log.i("PWD_RESET", ">>> Botón pulsado con email=$email")
                 if (loading) return@Button
-
-                if (email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                if (email.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                     emailError = true
                     Toast.makeText(context, "Email inválido", Toast.LENGTH_SHORT).show()
                     return@Button
@@ -100,7 +86,6 @@ fun OlvidoContraseña(
                 FirebaseAuth.getInstance()
                     .sendPasswordResetEmail(email.trim())
                     .addOnSuccessListener {
-                        Log.i("PWD_RESET", "✅ Éxito enviando reset a $email")
                         loading = false
                         Toast.makeText(context, "Enlace enviado", Toast.LENGTH_LONG).show()
                         navController.navigate("reset_confirmation") {
@@ -108,42 +93,22 @@ fun OlvidoContraseña(
                         }
                     }
                     .addOnFailureListener { e ->
-                        Log.e("PWD_RESET", "❌ Fallo enviando reset: ${e?.message}")
                         loading = false
-                        Toast.makeText(context, "Error enviando enlace", Toast.LENGTH_LONG).show()
+                        Toast.makeText(
+                            context,
+                            "Error enviando enlace: ${e.localizedMessage ?: "desconocido"}",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
             },
+            enabled = !loading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape  = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(containerColor = primaryRed),
-            enabled = !loading
+            shape = MaterialTheme.shapes.medium
         ) {
-            Text(
-                text  = if (loading) "Enviando..." else "Enviar enlace",
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp)
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedButton(
-            onClick = { navController.navigate("register") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text(
-                text  = "¿Aún no tienes cuenta?",
-                style = TextStyle(
-                    color      = textColor,
-                    fontSize   = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
+            Text(text = if (loading) "Enviando..." else "Enviar enlace", color = Color.White)
         }
     }
 }

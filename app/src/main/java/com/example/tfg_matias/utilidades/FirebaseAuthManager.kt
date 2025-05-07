@@ -1,114 +1,71 @@
+// FirebaseAuthManager.kt
 package com.example.tfg_matias.utilidades
 
 import android.app.Activity
 import android.content.Intent
-import android.util.Log
-import com.example.tfg_matias.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.tasks.await
 
-class FirebaseAuthManager {
-    private val auth = FirebaseAuth.getInstance()
-    private val db   = FirebaseFirestore.getInstance()
+class FirebaseAuthManager(private val webClientId: String) {
 
-    /** → Intent para Google Sign-In */
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+
+    /** Construye y devuelve el Intent de Google Sign-In */
     fun getGoogleSignInIntent(activity: Activity): Intent {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(activity.getString(R.string.default_web_client_id))
+            .requestIdToken(webClientId)
             .requestEmail()
             .build()
         return GoogleSignIn.getClient(activity, gso).signInIntent
     }
 
-    /** → Procesa respuesta Google */
-    fun handleGoogleSignInResult(
-        data: Intent?,
-        onResult: (Boolean, String?) -> Unit
-    ) {
-        val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+    /** Maneja el resultado de la pantalla de Google y hace sign-in en Firebase */
+    suspend fun handleGoogleSignInResult(data: Intent?, callback: (Boolean, String?) -> Unit) {
         try {
-            val acct = task.getResult(ApiException::class.java)!!
-            val cred = GoogleAuthProvider.getCredential(acct.idToken, null)
-            auth.signInWithCredential(cred)
-                .addOnSuccessListener { res ->
-                    val u = res.user!!
-                    val info = mapOf(
-                        "email"       to u.email,
-                        "displayName" to u.displayName,
-                        "photoUrl"    to (u.photoUrl?.toString() ?: ""),
-                        "lastLogin"   to FieldValue.serverTimestamp()
-                    )
-                    db.collection("users")
-                        .document(u.uid)
-                        .set(info, SetOptions.merge())
-                    onResult(true, null)
-                }
-                .addOnFailureListener { e ->
-                    Log.e("AUTH_GOOGLE", "Google sign-in failed: ${e.message}")
-                    onResult(false, e.message)
-                }
-        } catch (e: ApiException) {
-            Log.e("AUTH_GOOGLE", "Google API exception: ${e.message}")
-            onResult(false, e.message)
+            val account = GoogleSignIn.getSignedInAccountFromIntent(data).await()
+            val cred    = GoogleAuthProvider.getCredential(account.idToken, null)
+            auth.signInWithCredential(cred).await()
+            callback(true, null)
+        } catch (e: Exception) {
+            callback(false, e.localizedMessage)
         }
     }
 
-    /** → Registro email/password */
-    fun registerWithEmail(
+    /** Registro con email/password */
+    suspend fun registerWithEmail(
         email: String,
         password: String,
         nombre: String,
-        onResult: (Boolean, String?) -> Unit
+        callback: (Boolean, String?) -> Unit
     ) {
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener {
-                val uid = auth.currentUser?.uid ?: ""
-                db.collection("users")
-                    .document(uid)
-                    .set(mapOf("displayName" to nombre), SetOptions.merge())
-                onResult(true, null)
-            }
-            .addOnFailureListener { e ->
-                Log.e("AUTH_REGISTER", "Register failed: ${e.message}")
-                onResult(false, e.message)
-            }
+        try {
+            auth.createUserWithEmailAndPassword(email, password).await()
+            callback(true, null)
+        } catch (e: Exception) {
+            callback(false, e.localizedMessage)
+        }
     }
 
-    /** → Login email/password */
-    fun loginWithEmail(
+    /** Login con email/password */
+    suspend fun loginWithEmail(
         email: String,
         password: String,
-        onResult: (Boolean, String?) -> Unit
+        callback: (Boolean, String?) -> Unit
     ) {
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnSuccessListener {
-                onResult(true, null)
-            }
-            .addOnFailureListener { e ->
-                Log.e("AUTH_LOGIN", "Login failed: ${e.message}")
-                onResult(false, e.message)
-            }
+        try {
+            auth.signInWithEmailAndPassword(email, password).await()
+            callback(true, null)
+        } catch (e: Exception) {
+            callback(false, e.localizedMessage)
+        }
     }
 
-    /** → **Restablecer contraseña** */
-    fun sendPasswordResetEmail(
-        email: String,
-        onResult: (Boolean, String?) -> Unit
-    ) {
-        auth.sendPasswordResetEmail(email)
-            .addOnSuccessListener {
-                Log.i("AUTH_RESET", "✅ sendPasswordResetEmail: SUCCESS")
-                onResult(true, null)
-            }
-            .addOnFailureListener { e ->
-                Log.e("AUTH_RESET", "❌ sendPasswordResetEmail: FAILED → ${e.message}")
-                onResult(false, e.message)
-            }
+    /** Envia el correo de restablecimiento de contraseña */
+    fun sendPasswordResetEmail(email: String): Task<Void> {
+        return auth.sendPasswordResetEmail(email)
     }
 }
