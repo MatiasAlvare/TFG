@@ -1,4 +1,5 @@
-// ✅ Código COMPLETO para Perfil.kt actualizado con confirmación de eliminación y redirección tras logout
+// ✅ Código COMPLETO para Perfil.kt actualizado con valoración y comentarios + confirmación de eliminación
+
 
 package com.example.tfg_matias.pantallas
 
@@ -20,6 +21,7 @@ import coil.compose.AsyncImage
 import com.example.tfg_matias.R
 import com.example.tfg_matias.ViewModel.CarViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +32,7 @@ import kotlinx.coroutines.tasks.await
 fun Perfil(
     userId: String,
     onCarClick: (String) -> Unit,
-    onLogout: () -> Unit // 👈 añadido para redirigir tras logout
+    onLogout: () -> Unit
 ) {
     val vm: CarViewModel = viewModel()
     val user by vm.selectedProfile.collectAsState()
@@ -39,6 +41,8 @@ fun Perfil(
     val context = LocalContext.current
 
     var showDialog by remember { mutableStateOf(false) }
+    var comentario by remember { mutableStateOf("") }
+    var valoracion by remember { mutableStateOf(0f) }
 
     val isCurrentUser = FirebaseAuth.getInstance().currentUser?.uid == userId
 
@@ -110,6 +114,51 @@ fun Perfil(
                 }
             }
 
+            // Valoración y comentario (solo si NO es tu perfil)
+            if (!isCurrentUser) {
+                Spacer(Modifier.height(24.dp))
+                Divider()
+                Spacer(Modifier.height(12.dp))
+
+                Text("Deja una valoración y comentario:", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+
+                Slider(
+                    value = valoracion,
+                    onValueChange = { valoracion = it },
+                    valueRange = 0f..5f,
+                    steps = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text("Valoración: ${valoracion.toInt()} estrellas")
+
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = comentario,
+                    onValueChange = { comentario = it },
+                    label = { Text("Comentario") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    val db = FirebaseFirestore.getInstance()
+                    db.collection("users").document(userId)
+                        .update(
+                            mapOf(
+                                "comentarios" to FieldValue.arrayUnion(comentario),
+                                "valoracion" to valoracion
+                            )
+                        ).addOnSuccessListener {
+                            Toast.makeText(context, "Comentario enviado", Toast.LENGTH_SHORT).show()
+                            comentario = ""
+                            valoracion = 0f
+                        }
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Enviar")
+                }
+            }
+
             // Coches publicados
             Spacer(Modifier.height(16.dp))
             Text("Coches publicados:", style = MaterialTheme.typography.titleMedium)
@@ -119,24 +168,54 @@ fun Perfil(
                 Text("Este usuario no ha publicado coches aún.", style = MaterialTheme.typography.bodySmall)
             } else {
                 cochesPublicados.forEach { coche ->
-                    CocheCard(
-                        coche = coche,
-                        onClick = { onCarClick(coche.id) }
-                    )
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            CocheCard(
+                                coche = coche,
+                                onClick = { onCarClick(coche.id) }
+                            )
+
+                            if (isCurrentUser) {
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        val db = FirebaseFirestore.getInstance()
+                                        db.collection("cars").document(coche.id)
+                                            .delete()
+                                            .addOnSuccessListener {
+                                                Toast.makeText(context, "Publicación eliminada", Toast.LENGTH_SHORT).show()
+                                            }
+                                            .addOnFailureListener {
+                                                Toast.makeText(context, "Error al eliminar", Toast.LENGTH_SHORT).show()
+                                            }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Eliminar publicación", color = MaterialTheme.colorScheme.onError)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
-            // 🔽 Solo si es el perfil propio
+            // Opciones si es tu perfil
             if (isCurrentUser) {
                 Spacer(Modifier.height(24.dp))
-                Divider()
+                HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
 
                 Button(
                     onClick = {
                         FirebaseAuth.getInstance().signOut()
                         Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()
-                        onLogout() // 👈 volvemos al login
+                        onLogout()
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -166,7 +245,6 @@ fun Perfil(
         }
     }
 
-    // 🔔 Dialog de confirmación
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -182,27 +260,23 @@ fun Perfil(
                         try {
                             val uid = authUser?.uid ?: return@launch
 
-                            // 1️⃣ Eliminar coches
                             val carsSnapshot = db.collection("cars").whereEqualTo("ownerId", uid).get().await()
                             for (doc in carsSnapshot.documents) {
                                 db.collection("cars").document(doc.id).delete().await()
                             }
 
-                            // 2️⃣ Eliminar chats
                             val chatsSnapshot = db.collection("chats").whereArrayContains("participants", uid).get().await()
                             for (doc in chatsSnapshot.documents) {
                                 db.collection("chats").document(doc.id).delete().await()
                             }
 
-                            // 3️⃣ Eliminar perfil
                             db.collection("users").document(uid).delete().await()
 
-                            // 4️⃣ Eliminar cuenta Auth
                             authUser.delete().addOnCompleteListener { task ->
                                 CoroutineScope(Dispatchers.Main).launch {
                                     if (task.isSuccessful) {
                                         Toast.makeText(context, "Cuenta eliminada", Toast.LENGTH_LONG).show()
-                                        onLogout() // 👈 volvemos al login
+                                        onLogout()
                                     } else {
                                         Toast.makeText(context, "Error al eliminar cuenta", Toast.LENGTH_LONG).show()
                                     }

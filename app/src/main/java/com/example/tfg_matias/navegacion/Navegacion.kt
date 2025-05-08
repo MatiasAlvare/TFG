@@ -11,7 +11,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -56,7 +55,7 @@ fun Navegacion(carVM: CarViewModel) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "login",
+            startDestination = if (user != null) "principal" else "login",
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
@@ -110,20 +109,27 @@ fun Navegacion(carVM: CarViewModel) {
             composable("principal") {
                 Busqueda(
                     cars = cars,
-                    onApplyFilters = { marca, modelo, pMin, pMax, _, _, _, _, _, _, _, _, soloElec, _, _ ->
+                    onApplyFilters = { marca, modelo, pMin, pMax, provincia, ciudad, añoMin, añoMax, kmMin, kmMax, combustible, color ->
                         carVM.applyFilters(
                             marca = marca,
                             modelo = modelo,
                             precioMin = pMin.toDoubleOrNull(),
                             precioMax = pMax.toDoubleOrNull(),
-                            soloElectricos = soloElec
+                            provincia = provincia,
+                            ciudad = ciudad,
+                            añoMin = añoMin.toIntOrNull(),
+                            añoMax = añoMax.toIntOrNull(),
+                            kmMin = kmMin.toIntOrNull(),
+                            kmMax = kmMax.toIntOrNull(),
+                            combustible = combustible,
+                            color = color
                         )
-                    },
-                    onCarClick = { id ->
-                        navController.navigate("detail/$id")
                     }
-                )
+                ) { id ->
+                    navController.navigate("detail/$id")
+                }
             }
+
 
             composable("vender") {
                 RequireAuth(navController) {

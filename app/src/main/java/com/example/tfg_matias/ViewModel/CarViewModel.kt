@@ -71,21 +71,38 @@ class CarViewModel : ViewModel() {
         }
     }
 
+    // ✅ Nueva función applyFilters estilo coches.net
     fun applyFilters(
         marca: String?,
         modelo: String?,
         precioMin: Double?,
         precioMax: Double?,
-        soloElectricos: Boolean
+        provincia: String?,
+        ciudad: String?,
+        añoMin: Int?,
+        añoMax: Int?,
+        kmMin: Int?,
+        kmMax: Int?,
+        combustible: String?,
+        color: String?
     ) {
         _filteredCars.value = _cars.value.filter { coche ->
             val cumpleMarca = marca.isNullOrBlank() || coche.marca.contains(marca, ignoreCase = true)
             val cumpleModelo = modelo.isNullOrBlank() || coche.modelo.contains(modelo, ignoreCase = true)
             val cumplePrecioMin = precioMin == null || coche.precio >= precioMin
             val cumplePrecioMax = precioMax == null || coche.precio <= precioMax
-            val cumpleElectrico = !soloElectricos || coche.combustible.equals("Eléctrico", ignoreCase = true)
+            val cumpleProvincia = provincia.isNullOrBlank() || coche.provincia.contains(provincia, ignoreCase = true)
+            val cumpleCiudad = ciudad.isNullOrBlank() || coche.ciudad.contains(ciudad, ignoreCase = true)
+            val cumpleAñoMin = añoMin == null || coche.año.toIntOrNull()?.let { it >= añoMin } ?: true
+            val cumpleAñoMax = añoMax == null || coche.año.toIntOrNull()?.let { it <= añoMax } ?: true
+            val cumpleKmMin = kmMin == null || coche.kilometros >= kmMin
+            val cumpleKmMax = kmMax == null || coche.kilometros <= kmMax
+            val cumpleCombustible = combustible.isNullOrBlank() || coche.combustible.contains(combustible, ignoreCase = true)
+            val cumpleColor = color.isNullOrBlank() || coche.color.contains(color, ignoreCase = true)
 
-            cumpleMarca && cumpleModelo && cumplePrecioMin && cumplePrecioMax && cumpleElectrico
+            cumpleMarca && cumpleModelo && cumplePrecioMin && cumplePrecioMax &&
+                    cumpleProvincia && cumpleCiudad && cumpleAñoMin && cumpleAñoMax &&
+                    cumpleKmMin && cumpleKmMax && cumpleCombustible && cumpleColor
         }
     }
 
@@ -99,7 +116,6 @@ class CarViewModel : ViewModel() {
         }
     }
 
-
     suspend fun getUserById(userId: String): Usuario? {
         return try {
             val snapshot = db.collection("users").document(userId).get().await()
@@ -109,7 +125,6 @@ class CarViewModel : ViewModel() {
             null
         }
     }
-
 
     // Subir imagen
     private suspend fun uploadImage(uri: Uri): String {

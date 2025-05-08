@@ -1,3 +1,5 @@
+// ✅ Código COMPLETO Busqueda.kt con filtros alineados con la publicación
+
 @file:OptIn(
     androidx.compose.material3.ExperimentalMaterial3Api::class,
     androidx.compose.foundation.ExperimentalFoundationApi::class
@@ -5,11 +7,8 @@
 package com.example.tfg_matias.pantallas
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable             // <<<<<<<<<<<<<<<<<
-import androidx.compose.foundation.layout.FlowRow       // <<<<<<<<<<<<<<<<<
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.R
 
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun Busqueda(
@@ -34,18 +32,15 @@ fun Busqueda(
     onApplyFilters: (
         marca: String,
         modelo: String,
-        pMin: String,
-        pMax: String,
-        ubicacion: String,
-        vendedorTipo: String,
-        aMin: String,
-        aMax: String,
+        precioMin: String,
+        precioMax: String,
+        provincia: String,
+        ciudad: String,
+        añoMin: String,
+        añoMax: String,
         kmMin: String,
         kmMax: String,
-        carroList: List<String>,
-        compList: List<String>,
-        soloElec: Boolean,
-        equipList: List<String>,
+        combustible: String,
         color: String
     ) -> Unit,
     onCarClick: (String) -> Unit
@@ -53,29 +48,21 @@ fun Busqueda(
     var query by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
 
-    // Estados de filtro
+    // Filtros
     var marca by remember { mutableStateOf("") }
     var modelo by remember { mutableStateOf("") }
     var precioMin by remember { mutableStateOf("") }
     var precioMax by remember { mutableStateOf("") }
-    var ubicacion by remember { mutableStateOf("") }
-    var vendedorTipo by remember { mutableStateOf("Particular") }
-    var annoMin by remember { mutableStateOf("") }
-    var annoMax by remember { mutableStateOf("") }
+    var provincia by remember { mutableStateOf("") }
+    var ciudad by remember { mutableStateOf("") }
+    var añoMin by remember { mutableStateOf("") }
+    var añoMax by remember { mutableStateOf("") }
     var kmMin by remember { mutableStateOf("") }
     var kmMax by remember { mutableStateOf("") }
-    val carrocerias = listOf("SUV", "Berlina", "Familiar", "Coupe", "Todoterreno")
-    val selectedCarrocerias = remember { mutableStateListOf<String>() }
-    val combustibles = listOf("Gasolina", "Diésel", "Híbrido", "Eléctrico")
-    val selectedCombustibles = remember { mutableStateListOf<String>() }
-    var soloElectricos by remember { mutableStateOf(false) }
-    val equipamientos = listOf("Aire Acondicionado", "Navegación", "Bluetooth", "Cámara")
-    val selectedEquipamientos = remember { mutableStateListOf<String>() }
-    val colores = listOf("Rojo", "Blanco", "Negro", "Azul", "Gris")
-    var selectedColor by remember { mutableStateOf("") }
+    var combustible by remember { mutableStateOf("") }
+    var color by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
-        // Barra de búsqueda + botón filtros
         Row(
             Modifier
                 .fillMaxWidth()
@@ -85,7 +72,7 @@ fun Busqueda(
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Escribe qué estás buscando") },
+                placeholder = { Text("Buscar coches") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 modifier = Modifier
                     .weight(1f)
@@ -93,14 +80,12 @@ fun Busqueda(
             )
             Spacer(Modifier.width(8.dp))
             IconButton(onClick = { showFilters = true }) {
-                Icon(painterResource(R.drawable.ic_filtrar), contentDescription = "Filtros")
+                Icon(painter = painterResource(id = R.drawable.ic_filtrar), contentDescription = "Filtros", modifier = Modifier.size(40.dp))
             }
         }
 
-        // Grid de coches filtrados
-        // Lista de coches filtrados en formato vertical (estilo AutoHero)
         LazyColumn(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
@@ -127,228 +112,89 @@ fun Busqueda(
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // Marca y modelo
-                        OutlinedTextField(
-                            value = marca,
-                            onValueChange = { marca = it },
-                            label = { Text("Marca") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = modelo,
-                            onValueChange = { modelo = it },
-                            label = { Text("Modelo") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(8.dp))
+                        Text("Marca y modelo", style = MaterialTheme.typography.titleMedium)
+                        OutlinedTextField(value = marca, onValueChange = { marca = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = modelo, onValueChange = { modelo = it }, label = { Text("Modelo") }, modifier = Modifier.fillMaxWidth())
 
-                        // Precio
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = precioMin,
-                                onValueChange = { precioMin = it },
-                                label = { Text("Desde") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
-                            )
-                            OutlinedTextField(
-                                value = precioMax,
-                                onValueChange = { precioMax = it },
-                                label = { Text("Hasta") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
-                            )
+                        Spacer(Modifier.height(8.dp))
+                        Text("Precio (€)", style = MaterialTheme.typography.titleMedium)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(value = precioMin, onValueChange = { precioMin = it }, label = { Text("Mínimo") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                            OutlinedTextField(value = precioMax, onValueChange = { precioMax = it }, label = { Text("Máximo") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
                         }
-                        Spacer(Modifier.height(8.dp))
 
-                        // Ubicación
-                        OutlinedTextField(
-                            value = ubicacion,
-                            onValueChange = { ubicacion = it },
-                            label = { Text("Ubicación") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
                         Spacer(Modifier.height(8.dp))
+                        Text("Provincia y ciudad", style = MaterialTheme.typography.titleMedium)
+                        OutlinedTextField(value = provincia, onValueChange = { provincia = it }, label = { Text("Provincia") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = ciudad, onValueChange = { ciudad = it }, label = { Text("Ciudad") }, modifier = Modifier.fillMaxWidth())
 
-                        // Vendedores
-                        Text("Vendedores", style = MaterialTheme.typography.titleMedium)
-                        FlowRow(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(start = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            listOf("Particular", "Concesionario", "Cualquiera").forEach { opt ->
-                                Row(
-                                    Modifier
-                                        .clickable { vendedorTipo = opt }
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = (vendedorTipo == opt),
-                                        onClick = { vendedorTipo = opt }
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(opt)
-                                }
-                            }
+                        Spacer(Modifier.height(8.dp))
+                        Text("Año de matriculación", style = MaterialTheme.typography.titleMedium)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(value = añoMin, onValueChange = { añoMin = it }, label = { Text("Desde") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                            OutlinedTextField(value = añoMax, onValueChange = { añoMax = it }, label = { Text("Hasta") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
                         }
-                        Spacer(Modifier.height(8.dp))
 
-                        // Año
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = annoMin,
-                                onValueChange = { annoMin = it },
-                                label = { Text("Año min") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
-                            )
-                            OutlinedTextField(
-                                value = annoMax,
-                                onValueChange = { annoMax = it },
-                                label = { Text("Año max") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
-                            )
+                        Spacer(Modifier.height(8.dp))
+                        Text("Kilómetros", style = MaterialTheme.typography.titleMedium)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(value = kmMin, onValueChange = { kmMin = it }, label = { Text("Mínimo") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                            OutlinedTextField(value = kmMax, onValueChange = { kmMax = it }, label = { Text("Máximo") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
                         }
-                        Spacer(Modifier.height(8.dp))
 
-                        // Kilómetros
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = kmMin,
-                                onValueChange = { kmMin = it },
-                                label = { Text("Km min") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
-                            )
-                            OutlinedTextField(
-                                value = kmMax,
-                                onValueChange = { kmMax = it },
-                                label = { Text("Km max") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
                         Spacer(Modifier.height(8.dp))
+                        Text("Combustible", style = MaterialTheme.typography.titleMedium)
+                        OutlinedTextField(value = combustible, onValueChange = { combustible = it }, label = { Text("Tipo de combustible") }, modifier = Modifier.fillMaxWidth())
 
-                        // Carrocería
-                        Text("Carrocería", style = MaterialTheme.typography.titleMedium)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            carrocerias.forEach { opt ->
-                                FilterChip(
-                                    selected = selectedCarrocerias.contains(opt),
-                                    onClick = {
-                                        if (selectedCarrocerias.contains(opt)) selectedCarrocerias.remove(
-                                            opt
-                                        )
-                                        else selectedCarrocerias.add(opt)
-                                    },
-                                    label = { Text(opt) }
-                                )
-                            }
-                        }
                         Spacer(Modifier.height(8.dp))
-
-                        // Motor
-                        Text("Motor", style = MaterialTheme.typography.titleMedium)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            combustibles.forEach { opt ->
-                                FilterChip(
-                                    selected = selectedCombustibles.contains(opt),
-                                    onClick = {
-                                        if (selectedCombustibles.contains(opt)) selectedCombustibles.remove(
-                                            opt
-                                        )
-                                        else selectedCombustibles.add(opt)
-                                    },
-                                    label = { Text(opt) }
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
-
-                        // Eléctricos
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = soloElectricos,
-                                onCheckedChange = { soloElectricos = it }
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("Sólo eléctricos")
-                        }
-                        Spacer(Modifier.height(8.dp))
-
-                        // Equipamiento
-                        Text("Equipamiento", style = MaterialTheme.typography.titleMedium)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            equipamientos.forEach { opt ->
-                                FilterChip(
-                                    selected = selectedEquipamientos.contains(opt),
-                                    onClick = {
-                                        if (selectedEquipamientos.contains(opt)) selectedEquipamientos.remove(
-                                            opt
-                                        )
-                                        else selectedEquipamientos.add(opt)
-                                    },
-                                    label = { Text(opt) }
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
-
-                        // Color
                         Text("Color", style = MaterialTheme.typography.titleMedium)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            colores.forEach { opt ->
-                                FilterChip(
-                                    selected = (selectedColor == opt),
-                                    onClick = { selectedColor = opt },
-                                    label = { Text(opt) }
-                                )
-                            }
-                        }
+                        OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color") }, modifier = Modifier.fillMaxWidth())
                     }
                 },
                 confirmButton = {
-                    Button(onClick = {
-                        onApplyFilters(
-                            marca,
-                            modelo,
-                            precioMin,
-                            precioMax,
-                            ubicacion,
-                            vendedorTipo,
-                            annoMin,
-                            annoMax,
-                            kmMin,
-                            kmMax,
-                            selectedCarrocerias.toList(),
-                            selectedCombustibles.toList(),
-                            soloElectricos,
-                            selectedEquipamientos.toList(),
-                            selectedColor
-                        )
-                        showFilters = false
-                    }) {
-                        Text("Aplicar filtros")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showFilters = false }) {
-                        Text("Cancelar")
+                    Column {
+                        Button(
+                            onClick = {
+                                onApplyFilters(
+                                    marca, modelo, precioMin, precioMax, provincia, ciudad,
+                                    añoMin, añoMax, kmMin, kmMax, combustible, color
+                                )
+                                showFilters = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Aplicar filtros")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                // Limpiar todas las variables a vacío
+                                marca = ""
+                                modelo = ""
+                                precioMin = ""
+                                precioMax = ""
+                                provincia = ""
+                                ciudad = ""
+                                añoMin = ""
+                                añoMax = ""
+                                kmMin = ""
+                                kmMax = ""
+                                combustible = ""
+                                color = ""
+
+                                // Aplicar filtros vacíos (mostrar todos los coches)
+                                onApplyFilters(
+                                    "", "", "", "", "", "",
+                                    "", "", "", "", "", ""
+                                )
+                                showFilters = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Limpiar filtros")
+                        }
                     }
                 }
             )

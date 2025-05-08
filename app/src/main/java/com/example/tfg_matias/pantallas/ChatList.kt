@@ -1,4 +1,4 @@
-// ✅ ChatList.kt actualizado: NO se eliminan chats huérfanos, se muestran con aviso
+// ✅ ChatList.kt mejorado: muestra últimos mensajes en tiempo real en la lista
 
 package com.example.tfg_matias.pantallas
 
@@ -26,6 +26,7 @@ fun ChatList(
 ) {
     val chats by chatVM.chatList.collectAsState()
     val cars by carVM.cars.collectAsState()
+    val globalNewMessages by chatVM.globalNewMessages.collectAsState()
 
     LaunchedEffect(Unit) {
         chatVM.loadChats()
@@ -38,14 +39,17 @@ fun ChatList(
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(chats) { chat ->
+            items(chats, key = { it.chatId }) { chat ->
                 val coche = cars.find { it.id == chat.cocheId }
+
+                // Último mensaje en tiempo real si hay actualización
+                val lastMessage = globalNewMessages[chat.chatId]?.text ?: chat.lastMessage
 
                 Card(
                     Modifier
                         .fillMaxWidth()
                         .padding(8.dp)
-                        .clickable(enabled = coche != null) {
+                        .clickable {
                             val sellerId = chat.participants.firstOrNull { it != com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid }
                             if (sellerId != null) {
                                 navController.navigate("chat/${chat.chatId}/${chat.cocheId}/$sellerId")
@@ -57,28 +61,18 @@ fun ChatList(
                             model = coche?.imageUrl ?: "https://via.placeholder.com/150x100?text=Sin+imagen",
                             contentDescription = null,
                             modifier = Modifier
-                                .size(100.dp)
-                                .fillMaxHeight()
-                                .weight(1f),
+                                .size(80.dp),
                             contentScale = ContentScale.Crop
                         )
                         Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(2f)) {
+                        Column {
                             Text(
                                 coche?.let { "${it.marca} ${it.modelo}" } ?: "Coche eliminado",
                                 style = MaterialTheme.typography.titleMedium
                             )
-                            if (chat.lastMessage.isNotEmpty()) {
+                            if (lastMessage.isNotEmpty()) {
                                 Spacer(Modifier.height(4.dp))
-                                Text(chat.lastMessage, style = MaterialTheme.typography.bodySmall)
-                            }
-                            if (coche == null) {
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    "Este coche ya no está disponible.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
+                                Text(lastMessage, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }

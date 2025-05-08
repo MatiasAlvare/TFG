@@ -18,8 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +32,11 @@ import coil.compose.AsyncImage
 import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.R
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.*
 
 @Composable
@@ -41,12 +44,39 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
     val context = LocalContext.current
 
     val marcas = listOf(
-        "Abarth", "Alfa Romeo", "Audi", "BMW", "Citroën", "Cupra", "Dacia", "DS", "Fiat",
-        "Ford", "Honda", "Hyundai", "Jaguar", "Jeep", "Kia", "Mazda", "Mercedes-Benz", "Mini",
-        "Mitsubishi", "Nissan", "Opel", "Peugeot", "Porsche", "Renault", "Seat", "Skoda",
-        "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo"
+        "Abarth",
+        "Alfa Romeo",
+        "Audi",
+        "BMW",
+        "Citroën",
+        "Cupra",
+        "Dacia",
+        "DS",
+        "Fiat",
+        "Ford",
+        "Honda",
+        "Hyundai",
+        "Jaguar",
+        "Jeep",
+        "Kia",
+        "Mazda",
+        "Mercedes-Benz",
+        "Mini",
+        "Mitsubishi",
+        "Nissan",
+        "Opel",
+        "Peugeot",
+        "Porsche",
+        "Renault",
+        "Seat",
+        "Skoda",
+        "Subaru",
+        "Suzuki",
+        "Tesla",
+        "Toyota",
+        "Volkswagen",
+        "Volvo"
     ).sorted()
-
     val combustibles = listOf("Gasolina", "Diésel", "Eléctrico", "Híbrido")
     val años = (1975..Calendar.getInstance().get(Calendar.YEAR)).toList().reversed()
     val provincias = mapOf(
@@ -78,7 +108,6 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
 
     var photoUris by remember { mutableStateOf(listOf<Uri>()) }
     val photoPicker = rememberLauncherForActivityResult(GetMultipleContents()) { uris: List<Uri> ->
-        println("🔥 URI SELECCIONADOS: $uris")
         photoUris = photoUris + uris
     }
 
@@ -89,7 +118,6 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Fotos
         Text("Fotos de tu coche", style = MaterialTheme.typography.titleMedium)
         Box(
             modifier = Modifier
@@ -110,9 +138,7 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
                 }
             } else {
                 LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(8.dp)
                 ) {
                     items(photoUris) { uri ->
                         AsyncImage(
@@ -295,46 +321,181 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
         }
 
         // Otros campos
-        OutlinedTextField(value = puertas, onValueChange = { puertas = it }, label = { Text("Puertas") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = plazas, onValueChange = { plazas = it }, label = { Text("Plazas") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = cilindrada, onValueChange = { cilindrada = it }, label = { Text("Cilindrada (cc)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = potencia, onValueChange = { potencia = it }, label = { Text("Potencia (CV)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = kilometros, onValueChange = { kilometros = it }, label = { Text("Kilómetros") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = precio, onValueChange = { precio = it }, label = { Text("Precio") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = puertas,
+            onValueChange = { puertas = it },
+            label = { Text("Puertas") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = plazas,
+            onValueChange = { plazas = it },
+            label = { Text("Plazas") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = cilindrada,
+            onValueChange = { cilindrada = it },
+            label = { Text("Cilindrada (cc)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = potencia,
+            onValueChange = { potencia = it },
+            label = { Text("Potencia (CV)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = color,
+            onValueChange = { color = it },
+            label = { Text("Color") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = kilometros,
+            onValueChange = { kilometros = it },
+            label = { Text("Kilómetros") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = precio,
+            onValueChange = { precio = it },
+            label = { Text("Precio") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = descripcion,
+            onValueChange = { descripcion = it },
+            label = { Text("Descripción") },
+            modifier = Modifier.fillMaxWidth()
+        )
 
         // Publicar
         Button(
             onClick = {
-                try {
-                    val nuevo = Coche(
-                        id = "",
-                        ownerId = FirebaseAuth.getInstance().currentUser!!.uid,
-                        tipo = "Venta",
-                        fotos = photoUris.map { it.toString() },
-                        marca = marca,
-                        modelo = modelo,
-                        carroceria = "",
-                        combustible = combustible,
-                        año = anio,
-                        automatico = false,
-                        etiqueta = "",
-                        color = color,
-                        puertas = puertas.toIntOrNull() ?: 0,
-                        plazas = plazas.toIntOrNull() ?: 0,
-                        cilindrada = cilindrada.toIntOrNull() ?: 0,
-                        potenciaCv = potencia.toIntOrNull() ?: 0,
-                        kilometros = kilometros.toIntOrNull() ?: 0,
-                        precio = precio.toDoubleOrNull() ?: 0.0,
-                        descripcion = descripcion,
-                        provincia = provincia,
-                        ciudad = ciudad,
-                        imageUrl = photoUris.firstOrNull()?.toString() ?: ""
-                    )
-                    onSubmit(nuevo, photoUris)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
+                        val storage = FirebaseStorage.getInstance()
+                        val urls = mutableListOf<String>()
+
+                        if (photoUris.isNotEmpty()) {
+                            CoroutineScope(Dispatchers.Main).launch {
+                                Toast.makeText(context, "Subiendo fotos...", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        }
+
+                        for ((i, uri) in photoUris.withIndex()) {
+                            val ref =
+                                storage.reference.child("cars/$uid/${System.currentTimeMillis()}_$i.jpg")
+                            ref.putFile(uri)
+                                .addOnSuccessListener {
+                                    ref.downloadUrl.addOnSuccessListener { downloadUrl ->
+                                        urls.add(downloadUrl.toString())
+
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            Toast.makeText(
+                                                context,
+                                                "Foto $i subida",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+
+                                        // Si todas las fotos ya están subidas
+                                        if (urls.size == photoUris.size) {
+                                            val nuevo = Coche(
+                                                id = "",
+                                                ownerId = uid,
+                                                tipo = "Venta",
+                                                fotos = urls,
+                                                marca = marca,
+                                                modelo = modelo,
+                                                carroceria = "",
+                                                combustible = combustible,
+                                                año = anio,
+                                                automatico = false,
+                                                etiqueta = "",
+                                                color = color,
+                                                puertas = puertas.toIntOrNull() ?: 0,
+                                                plazas = plazas.toIntOrNull() ?: 0,
+                                                cilindrada = cilindrada.toIntOrNull() ?: 0,
+                                                potenciaCv = potencia.toIntOrNull() ?: 0,
+                                                kilometros = kilometros.toIntOrNull() ?: 0,
+                                                precio = precio.toDoubleOrNull() ?: 0.0,
+                                                descripcion = descripcion,
+                                                provincia = provincia,
+                                                ciudad = ciudad,
+                                                imageUrl = urls.firstOrNull() ?: ""
+                                            )
+
+                                            onSubmit(nuevo, photoUris)
+                                        }
+                                    }.addOnFailureListener { e ->
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            Toast.makeText(
+                                                context,
+                                                "Error URL: ${e.localizedMessage}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                }
+                                .addOnFailureListener { e ->
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        Toast.makeText(
+                                            context,
+                                            "Error al subir foto: ${e.localizedMessage}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                        }
+
+                        if (photoUris.isEmpty()) {
+                            val nuevo = Coche(
+                                id = "",
+                                ownerId = uid,
+                                tipo = "Venta",
+                                fotos = urls,
+                                marca = marca,
+                                modelo = modelo,
+                                carroceria = "",
+                                combustible = combustible,
+                                año = anio,
+                                automatico = false,
+                                etiqueta = "",
+                                color = color,
+                                puertas = puertas.toIntOrNull() ?: 0,
+                                plazas = plazas.toIntOrNull() ?: 0,
+                                cilindrada = cilindrada.toIntOrNull() ?: 0,
+                                potenciaCv = potencia.toIntOrNull() ?: 0,
+                                kilometros = kilometros.toIntOrNull() ?: 0,
+                                precio = precio.toDoubleOrNull() ?: 0.0,
+                                descripcion = descripcion,
+                                provincia = provincia,
+                                ciudad = ciudad,
+                                imageUrl = ""
+                            )
+                            CoroutineScope(Dispatchers.Main).launch {
+                                onSubmit(nuevo, photoUris)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(
+                                context,
+                                "Error: ${e.localizedMessage}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth()
