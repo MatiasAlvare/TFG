@@ -11,7 +11,10 @@ package com.example.tfg_matias.Model
  */
 data class Usuario(
     val id: String = "",
+    val email: String = "",
     val name: String = "",
     val photoUrl: String = "",
-    val rating: Double = 0.0
+    val valoracion: Double = 0.0,
+    val comentarios: List<String> = emptyList(),
+    val city: String = ""  // 👈 AÑADIDO AQUÍ
 )

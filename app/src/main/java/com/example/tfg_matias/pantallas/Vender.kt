@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,84 +33,63 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.R
-import com.example.tfg_matias.utilidades.RequireAuth
 import com.google.firebase.auth.FirebaseAuth
+import java.util.*
 
 @Composable
-fun Vender(onSubmit: (Coche) -> Unit) {
-    // Envuelto en RequireAuth en MainActivity, así user no es null
+fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
     val context = LocalContext.current
 
-    // Guardar URIs como Strings para rememberSaveable
-    var photoUris by rememberSaveable { mutableStateOf(listOf<String>()) }
-    // launcher para seleccionar múltiples imágenes
-    val photoPicker = rememberLauncherForActivityResult(GetMultipleContents()) { uris: List<Uri> ->
-        photoUris = photoUris + uris.map { it.toString() }
-    }
+    val marcas = listOf(
+        "Abarth", "Alfa Romeo", "Audi", "BMW", "Citroën", "Cupra", "Dacia", "DS", "Fiat",
+        "Ford", "Honda", "Hyundai", "Jaguar", "Jeep", "Kia", "Mazda", "Mercedes-Benz", "Mini",
+        "Mitsubishi", "Nissan", "Opel", "Peugeot", "Porsche", "Renault", "Seat", "Skoda",
+        "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo"
+    ).sorted()
 
-    val scrollState = rememberScrollState()
-
-    // ... otros estados existentes ...
-    var tipo by remember { mutableStateOf("Coche / 4×4") }
-    var expandedTipo by remember { mutableStateOf(false) }
-    val tipoOptions = listOf("Coche / 4×4", "Todoterreno", "SUV", "Familiar")
+    val combustibles = listOf("Gasolina", "Diésel", "Eléctrico", "Híbrido")
+    val años = (1975..Calendar.getInstance().get(Calendar.YEAR)).toList().reversed()
+    val provincias = mapOf(
+        "Madrid" to listOf("Madrid", "Alcalá de Henares", "Getafe", "Leganés", "Móstoles"),
+        "Barcelona" to listOf("Barcelona", "Hospitalet", "Sabadell", "Terrassa")
+    )
+    val todasProvincias = provincias.keys.toList().sorted()
 
     var marca by remember { mutableStateOf("") }
     var modelo by remember { mutableStateOf("") }
-    var carroceria by remember { mutableStateOf("") }
+    var anio by remember { mutableStateOf("") }
+    var provincia by remember { mutableStateOf("") }
+    var ciudad by remember { mutableStateOf("") }
     var combustible by remember { mutableStateOf("") }
-    var ano by remember { mutableStateOf("") }
-    var version by remember { mutableStateOf("") }
-    val transmissionOptions = listOf("Manual", "Automático")
-    var selectedTransmission by remember { mutableStateOf(transmissionOptions[1]) }
-    var etiqueta by remember { mutableStateOf("") }
+    var puertas by remember { mutableStateOf("") }
+    var plazas by remember { mutableStateOf("") }
+    var cilindrada by remember { mutableStateOf("") }
+    var potencia by remember { mutableStateOf("") }
     var color by remember { mutableStateOf("") }
     var kilometros by remember { mutableStateOf("") }
     var precio by remember { mutableStateOf("") }
-    var matricula by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
+
+    var marcaExpanded by remember { mutableStateOf(false) }
+    var anioExpanded by remember { mutableStateOf(false) }
+    var provinciaExpanded by remember { mutableStateOf(false) }
+    var ciudadExpanded by remember { mutableStateOf(false) }
+    var combustibleExpanded by remember { mutableStateOf(false) }
+
+    var photoUris by remember { mutableStateOf(listOf<Uri>()) }
+    val photoPicker = rememberLauncherForActivityResult(GetMultipleContents()) { uris: List<Uri> ->
+        println("🔥 URI SELECCIONADOS: $uris")
+        photoUris = photoUris + uris
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // --- Tipo ---
-        Text("Tipo de vehículo", style = MaterialTheme.typography.titleMedium)
-        ExposedDropdownMenuBox(
-            expanded = expandedTipo,
-            onExpandedChange = { expandedTipo = it }
-        ) {
-            TextField(
-                value = tipo,
-                onValueChange = {},
-                readOnly = true,
-                trailingIcon = {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            ExposedDropdownMenu(
-                expanded = expandedTipo,
-                onDismissRequest = { expandedTipo = false }
-            ) {
-                tipoOptions.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option) },
-                        onClick = {
-                            tipo = option
-                            expandedTipo = false
-                        }
-                    )
-                }
-            }
-        }
-
-        // --- Fotos ---
+        // Fotos
         Text("Fotos de tu coche", style = MaterialTheme.typography.titleMedium)
         Box(
             modifier = Modifier
@@ -124,7 +102,7 @@ fun Vender(onSubmit: (Coche) -> Unit) {
             if (photoUris.isEmpty()) {
                 IconButton(onClick = { photoPicker.launch("image/*") }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.imagenes),
+                        painterResource(id = R.drawable.imagenes),
                         contentDescription = "Subir fotos",
                         modifier = Modifier.size(48.dp),
                         tint = Color.Gray
@@ -136,8 +114,7 @@ fun Vender(onSubmit: (Coche) -> Unit) {
                         .fillMaxWidth()
                         .padding(8.dp)
                 ) {
-                    items(photoUris) { uriString ->
-                        val uri = Uri.parse(uriString)
+                    items(photoUris) { uri ->
                         AsyncImage(
                             model = uri,
                             contentDescription = null,
@@ -151,74 +128,216 @@ fun Vender(onSubmit: (Coche) -> Unit) {
             }
         }
 
-        // --- Campos básicos ---
-        OutlinedTextField(value = marca, onValueChange = { marca = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = modelo, onValueChange = { modelo = it }, label = { Text("Modelo") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = carroceria, onValueChange = { carroceria = it }, label = { Text("Carrocería") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = combustible, onValueChange = { combustible = it }, label = { Text("Combustible") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = ano, onValueChange = { ano = it }, label = { Text("Año") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = version, onValueChange = { version = it }, label = { Text("Versión") }, modifier = Modifier.fillMaxWidth())
-
-        // --- Transmisión ---
-        Text("Tipo de cambio", style = MaterialTheme.typography.titleMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            transmissionOptions.forEach { option ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .padding(end = 16.dp)
-                        .clickable { selectedTransmission = option }
-                ) {
-                    RadioButton(selected = (selectedTransmission == option), onClick = { selectedTransmission = option })
-                    Spacer(Modifier.width(4.dp))
-                    Text(option)
+        // Marca
+        ExposedDropdownMenuBox(
+            expanded = marcaExpanded,
+            onExpandedChange = { marcaExpanded = !marcaExpanded }
+        ) {
+            OutlinedTextField(
+                value = marca,
+                onValueChange = { marca = it },
+                readOnly = true,
+                label = { Text("Marca") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = marcaExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = marcaExpanded,
+                onDismissRequest = { marcaExpanded = false }
+            ) {
+                marcas.forEach { selectionOption ->
+                    DropdownMenuItem(
+                        text = { Text(selectionOption) },
+                        onClick = {
+                            marca = selectionOption
+                            marcaExpanded = false
+                        }
+                    )
                 }
             }
         }
 
-        // --- Más campos ---
-        OutlinedTextField(value = etiqueta, onValueChange = { etiqueta = it }, label = { Text("Etiqueta medioambiental") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color exterior") }, modifier = Modifier.fillMaxWidth())
+        // Modelo
+        OutlinedTextField(
+            value = modelo,
+            onValueChange = { modelo = it },
+            label = { Text("Modelo") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Año
+        ExposedDropdownMenuBox(
+            expanded = anioExpanded,
+            onExpandedChange = { anioExpanded = !anioExpanded }
+        ) {
+            OutlinedTextField(
+                value = anio,
+                onValueChange = { anio = it },
+                readOnly = true,
+                label = { Text("Año") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = anioExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = anioExpanded,
+                onDismissRequest = { anioExpanded = false }
+            ) {
+                años.forEach { selectionOption ->
+                    DropdownMenuItem(
+                        text = { Text(selectionOption.toString()) },
+                        onClick = {
+                            anio = selectionOption.toString()
+                            anioExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // Provincia
+        ExposedDropdownMenuBox(
+            expanded = provinciaExpanded,
+            onExpandedChange = { provinciaExpanded = !provinciaExpanded }
+        ) {
+            OutlinedTextField(
+                value = provincia,
+                onValueChange = { provincia = it },
+                readOnly = true,
+                label = { Text("Provincia") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = provinciaExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = provinciaExpanded,
+                onDismissRequest = { provinciaExpanded = false }
+            ) {
+                todasProvincias.forEach { selectionOption ->
+                    DropdownMenuItem(
+                        text = { Text(selectionOption) },
+                        onClick = {
+                            provincia = selectionOption
+                            provinciaExpanded = false
+                            ciudad = ""
+                        }
+                    )
+                }
+            }
+        }
+
+        // Ciudad
+        if (provincias[provincia] != null) {
+            ExposedDropdownMenuBox(
+                expanded = ciudadExpanded,
+                onExpandedChange = { ciudadExpanded = !ciudadExpanded }
+            ) {
+                OutlinedTextField(
+                    value = ciudad,
+                    onValueChange = { ciudad = it },
+                    readOnly = true,
+                    label = { Text("Ciudad") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = ciudadExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = ciudadExpanded,
+                    onDismissRequest = { ciudadExpanded = false }
+                ) {
+                    provincias[provincia]?.forEach { selectionOption ->
+                        DropdownMenuItem(
+                            text = { Text(selectionOption) },
+                            onClick = {
+                                ciudad = selectionOption
+                                ciudadExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Combustible
+        ExposedDropdownMenuBox(
+            expanded = combustibleExpanded,
+            onExpandedChange = { combustibleExpanded = !combustibleExpanded }
+        ) {
+            OutlinedTextField(
+                value = combustible,
+                onValueChange = { combustible = it },
+                readOnly = true,
+                label = { Text("Combustible") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = combustibleExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = combustibleExpanded,
+                onDismissRequest = { combustibleExpanded = false }
+            ) {
+                combustibles.forEach { selectionOption ->
+                    DropdownMenuItem(
+                        text = { Text(selectionOption) },
+                        onClick = {
+                            combustible = selectionOption
+                            combustibleExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // Otros campos
+        OutlinedTextField(value = puertas, onValueChange = { puertas = it }, label = { Text("Puertas") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = plazas, onValueChange = { plazas = it }, label = { Text("Plazas") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = cilindrada, onValueChange = { cilindrada = it }, label = { Text("Cilindrada (cc)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = potencia, onValueChange = { potencia = it }, label = { Text("Potencia (CV)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = kilometros, onValueChange = { kilometros = it }, label = { Text("Kilómetros") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = precio, onValueChange = { precio = it }, label = { Text("Precio") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = matricula, onValueChange = { matricula = it }, label = { Text("Matrícula") }, modifier = Modifier.fillMaxWidth())
-        Text("Datos adicionales", style = MaterialTheme.typography.titleMedium)
-        OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, modifier = Modifier.fillMaxWidth().height(120.dp), placeholder = { Text("¿Ha pasado la última ITV? ...") })
+        OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
 
-        Spacer(Modifier.height(24.dp))
-
-        // --- Botón Publicar ---
+        // Publicar
         Button(
             onClick = {
                 try {
-                    val currentUser = FirebaseAuth.getInstance().currentUser
-                    val ownerId = currentUser?.uid ?: ""
                     val nuevo = Coche(
                         id = "",
-                        ownerId = ownerId,
-                        tipo = tipo,
-                        fotos = photoUris,
+                        ownerId = FirebaseAuth.getInstance().currentUser!!.uid,
+                        tipo = "Venta",
+                        fotos = photoUris.map { it.toString() },
                         marca = marca,
                         modelo = modelo,
-                        carroceria = carroceria,
+                        carroceria = "",
                         combustible = combustible,
-                        año = ano,
-                        version = version,
-                        automatico = (selectedTransmission == "Automático"),
-                        etiqueta = etiqueta,
+                        año = anio,
+                        automatico = false,
+                        etiqueta = "",
                         color = color,
+                        puertas = puertas.toIntOrNull() ?: 0,
+                        plazas = plazas.toIntOrNull() ?: 0,
+                        cilindrada = cilindrada.toIntOrNull() ?: 0,
+                        potenciaCv = potencia.toIntOrNull() ?: 0,
                         kilometros = kilometros.toIntOrNull() ?: 0,
                         precio = precio.toDoubleOrNull() ?: 0.0,
-                        matricula = matricula,
-                        descripcion = descripcion
+                        descripcion = descripcion,
+                        provincia = provincia,
+                        ciudad = ciudad,
+                        imageUrl = photoUris.firstOrNull()?.toString() ?: ""
                     )
-                    onSubmit(nuevo)
+                    onSubmit(nuevo, photoUris)
                 } catch (e: Exception) {
                     Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text("Publicar coche")
         }

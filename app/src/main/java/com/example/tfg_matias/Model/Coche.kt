@@ -1,23 +1,8 @@
 package com.example.tfg_matias.Model
 
-import com.google.firebase.Timestamp
-
-/**
- * Representa un coche en Firestore.
- *
- * @param id         ID del documento
- * @param ownerId    UID del usuario que lo publica
- * @param title      Título (marca y modelo)
- * @param price      Precio en texto
- * @param images     Lista de URLs de imágenes
- * @param location   Localización (ciudad)
- * @param specs      Mapa con especificaciones (km, año, combustible...)
- */
 data class Coche(
     val id: String = "",
     val ownerId: String = "",
-
-    // ——— Campos nuevos ———
     val tipo: String = "",
     val fotos: List<String> = emptyList(),
     val marca: String = "",
@@ -25,13 +10,17 @@ data class Coche(
     val carroceria: String = "",
     val combustible: String = "",
     val año: String = "",
-    val version: String = "",
     val automatico: Boolean = false,
-    val manual: Boolean = false,
     val etiqueta: String = "",
     val color: String = "",
+    val puertas: Int = 0,
+    val plazas: Int = 0,
+    val cilindrada: Int = 0,
+    val potenciaCv: Int = 0,
     val kilometros: Int = 0,
     val precio: Double = 0.0,
-    val matricula: String = "",
-    val descripcion: String = ""
+    val descripcion: String = "",
+    val provincia: String = "",
+    val ciudad: String = "",
+    val imageUrl: String = ""
 )

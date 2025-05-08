@@ -31,19 +31,21 @@ import com.example.tfg_matias.R
 import com.example.tfg_matias.utilidades.AuthRes
 import com.example.tfg_matias.utilidades.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Registrarse(
+    onGoogleSignIn: () -> Unit = {},
     navController: NavController,
     onRegisterCompleted: () -> Unit = {},
     onGuestAccess: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val vm: AuthViewModel = viewModel(
-        factory = ViewModelProvider.AndroidViewModelFactory
-            .getInstance(context.applicationContext as Application)
+        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+            context.applicationContext as Application
+        )
     )
 
-    // 1) Creamos el launcher aquí mismo
     val googleLauncher = rememberLauncherForActivityResult(
         StartActivityForResult()
     ) { result ->
@@ -52,13 +54,18 @@ fun Registrarse(
 
     val authResult by vm.authResult.collectAsState()
 
-    var nombre             by remember { mutableStateOf("") }
-    var email              by remember { mutableStateOf("") }
-    var password           by remember { mutableStateOf("") }
-    var isPasswordVisible  by remember { mutableStateOf(false) }
-    var nombreError        by remember { mutableStateOf(false) }
-    var emailError         by remember { mutableStateOf(false) }
-    var passwordError      by remember { mutableStateOf(false) }
+
+    // ——————————————————————————————
+    // Campos de formulario y flags de error
+    var nombre by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isPasswordVisible by remember { mutableStateOf(false) }
+
+    var nombreError by remember { mutableStateOf(false) }
+    var emailError by remember { mutableStateOf(false) }
+    var passwordError by remember { mutableStateOf(false) }
+    // ——————————————————————————————
 
     val primaryRed = Color(0xFFFF0000)
     val greyBg     = Color(0xFFEEEEEE)
@@ -68,7 +75,7 @@ fun Registrarse(
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement   = Arrangement.Center,
-        horizontalAlignment   = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             "Registrarse",
@@ -77,27 +84,24 @@ fun Registrarse(
                 fontSize   = 24.sp
             )
         )
-
         Spacer(Modifier.height(24.dp))
 
-        // --- Botón Google Sign-In (lanza directamente) ---
+        // — Google Sign-In Button —
         Button(
             onClick = {
-                // primero ponemos en la VM lo que el usuario ya haya escrito
-                vm.nombre   = nombre
+                onGoogleSignIn()
                 vm.email    = email
                 vm.password = password
-                // lanzamos la UI de Google
                 googleLauncher.launch(vm.getGoogleSignInIntent(context as Activity))
             },
-            modifier = Modifier
+            Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             shape  = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(containerColor = greyBg)
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_google),
+                painterResource(R.drawable.ic_google),
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint     = Color.Unspecified
@@ -108,10 +112,10 @@ fun Registrarse(
 
         Spacer(Modifier.height(16.dp))
 
-        // Divider “o”
+        // — Divider con "o" —
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier          = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 8.dp)
         ) {
             Divider(Modifier.weight(1f).height(1.dp), color = Color.Gray)
             Text("  o  ", style = TextStyle(color = Color.Gray, fontSize = 14.sp))
@@ -120,9 +124,9 @@ fun Registrarse(
 
         Spacer(Modifier.height(16.dp))
 
-        // Nombre
+        // — Nombre —
         OutlinedTextField(
-            value       = nombre,
+            value         = nombre,
             onValueChange = {
                 nombre = it
                 if (nombreError) nombreError = false
@@ -131,12 +135,12 @@ fun Registrarse(
             leadingIcon = {
                 Icon(
                     painterResource(id = R.drawable.ic_usuario),
-                    contentDescription = null,
+                    contentDescription = "Nombre",
                     modifier = Modifier.size(20.dp)
                 )
             },
-            isError     = nombreError,
-            modifier    = Modifier.fillMaxWidth()
+            isError  = nombreError,
+            modifier = Modifier.fillMaxWidth()
         )
         if (nombreError) {
             Text(
@@ -148,9 +152,9 @@ fun Registrarse(
 
         Spacer(Modifier.height(8.dp))
 
-        // Email
+        // — Email —
         OutlinedTextField(
-            value       = email,
+            value         = email,
             onValueChange = {
                 email = it
                 if (emailError) emailError = false
@@ -159,12 +163,12 @@ fun Registrarse(
             leadingIcon = {
                 Icon(
                     painterResource(id = R.drawable.ic_gmail),
-                    contentDescription = null,
+                    contentDescription = "Email",
                     modifier = Modifier.size(20.dp)
                 )
             },
-            isError     = emailError,
-            modifier    = Modifier.fillMaxWidth()
+            isError  = emailError,
+            modifier = Modifier.fillMaxWidth()
         )
         if (emailError) {
             Text(
@@ -176,7 +180,7 @@ fun Registrarse(
 
         Spacer(Modifier.height(8.dp))
 
-        // Contraseña
+        // — Contraseña —
         OutlinedTextField(
             value                = password,
             onValueChange        = {
@@ -187,7 +191,7 @@ fun Registrarse(
             leadingIcon          = {
                 Icon(
                     painterResource(id = R.drawable.ic_candado),
-                    contentDescription = null,
+                    contentDescription = "Contraseña",
                     modifier = Modifier.size(20.dp)
                 )
             },
@@ -195,20 +199,17 @@ fun Registrarse(
                 IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     Icon(
                         painterResource(
-                            id = if (isPasswordVisible)
-                                R.drawable.ic_ojo_abierto
-                            else
-                                R.drawable.ic_ojo
+                            id = if (isPasswordVisible) R.drawable.ic_ojo_abierto
+                            else                 R.drawable.ic_ojo
                         ),
-                        contentDescription = null,
+                        contentDescription = "Mostrar/ocultar",
                         modifier = Modifier.size(20.dp)
                     )
                 }
             },
             visualTransformation = if (isPasswordVisible)
                 VisualTransformation.None
-            else
-                PasswordVisualTransformation(),
+            else PasswordVisualTransformation(),
             isError              = passwordError,
             modifier             = Modifier.fillMaxWidth()
         )
@@ -222,9 +223,10 @@ fun Registrarse(
 
         Spacer(Modifier.height(16.dp))
 
-        // Botón de REGISTRARSE
+        // — Botón Registrarse —
         Button(
             onClick = {
+                // validaciones
                 nombreError   = nombre.isBlank()
                 emailError    = email.isBlank() || !email.contains("@")
                 passwordError = password.isBlank()
@@ -235,11 +237,11 @@ fun Registrarse(
                     vm.register()
                 }
             },
-            colors   = ButtonDefaults.buttonColors(containerColor = primaryRed),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            shape    = RoundedCornerShape(8.dp)
+            shape  = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = primaryRed)
         ) {
             Text(
                 "Registrarse",
@@ -250,7 +252,7 @@ fun Registrarse(
 
         Spacer(Modifier.height(8.dp))
 
-        // ¿Ya tienes cuenta?
+        // — ¿Ya tienes cuenta? —
         OutlinedButton(
             onClick  = { navController.navigate("login") },
             modifier = Modifier.fillMaxWidth()
@@ -263,14 +265,14 @@ fun Registrarse(
 
         Spacer(Modifier.height(8.dp))
 
-        // Acceder sin cuenta
+        // — Acceder sin cuenta —
         Text(
-            "Acceder sin cuenta",
-            Modifier
+            text      = "Acceder sin cuenta",
+            modifier  = Modifier
                 .fillMaxWidth()
                 .clickable { onGuestAccess() }
                 .padding(vertical = 8.dp),
-            style = TextStyle(
+            style     = TextStyle(
                 color          = Color(0xFF0D47A1),
                 fontSize       = 14.sp,
                 fontWeight     = FontWeight.Bold,
@@ -280,13 +282,15 @@ fun Registrarse(
         )
     }
 
-    // Manejo de resultado
+    // — Navegación según resultado de registro —
     LaunchedEffect(authResult) {
         when (authResult) {
             is AuthRes.Success -> {
+                vm.crearUsuarioSiNoExiste()  // ✅ AÑADIDO
                 onRegisterCompleted()
                 vm.clearAuthResult()
             }
+
             is AuthRes.Error -> {
                 Toast.makeText(
                     context,
@@ -295,7 +299,7 @@ fun Registrarse(
                 ).show()
                 vm.clearAuthResult()
             }
-            else -> {}
+            else -> { /* Idle / Loading */ }
         }
     }
 }

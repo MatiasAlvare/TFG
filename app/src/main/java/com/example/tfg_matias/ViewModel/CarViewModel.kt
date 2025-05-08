@@ -1,126 +1,142 @@
 package com.example.tfg_matias.ViewModel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.Model.Usuario
-import com.example.tfg_matias.Model.Comentario
-import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.async
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-open class CarViewModel : ViewModel() {
-    private val db = Firebase.firestore
+class CarViewModel : ViewModel() {
 
-    // --- coches sin filtro y filtrados (igual que antes) ---
+    private val db = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
+
     private val _cars = MutableStateFlow<List<Coche>>(emptyList())
     val cars: StateFlow<List<Coche>> = _cars
 
     private val _filteredCars = MutableStateFlow<List<Coche>>(emptyList())
     val filteredCars: StateFlow<List<Coche>> = _filteredCars
 
-    // --- perfil y comentarios seleccionados ---
+    // Perfil
     private val _selectedProfile = MutableStateFlow<Usuario?>(null)
     val selectedProfile: StateFlow<Usuario?> = _selectedProfile
 
-    private val _selectedComments = MutableStateFlow<List<Comentario>>(emptyList())
-    val selectedComments: StateFlow<List<Comentario>> = _selectedComments
+    private val _profileError = MutableStateFlow("")
+    val profileError: StateFlow<String> = _profileError
 
-    init {
-        refreshAllCars()
-    }
-
-    private fun refreshAllCars() {
+    // Cargar coches
+    fun loadCars() {
         viewModelScope.launch {
-            val lista = db.collection("cars")
-                .get().await()
-                .map { doc -> doc.toObject(Coche::class.java).copy(id = doc.id) }
-
-            _cars.value = lista
-            _filteredCars.value = lista
+            try {
+                val snapshot = db.collection("cars").get().await()
+                val coches = snapshot.documents.mapNotNull { it.toObject(Coche::class.java) }
+                _cars.value = coches
+                _filteredCars.value = coches
+            } catch (e: Exception) {
+                println("❌ Error cargando coches: ${e.localizedMessage}")
+            }
         }
     }
 
+    // Añadir coche con imagen
+    fun addCarWithImage(car: Coche, localUris: List<Uri>) {
+        viewModelScope.launch {
+            try {
+                val imageUrl = if (localUris.isNotEmpty()) {
+                    uploadImage(localUris.first())
+                } else {
+                    ""
+                }
 
-    /**
-     * Recupera el perfil de un usuario por su ID.
-     */
-    suspend fun getUserProfile(userId: String): Usuario? {
-        val doc = db.collection("users")
-            .document(userId)
-            .get()
-            .await()
-        return doc.takeIf { it.exists() }
-            ?.toObject(Usuario::class.java)
-            ?.copy(id = doc.id)
+                val newId = db.collection("cars").document().id
+                val cocheConUrl = car.copy(id = newId, imageUrl = imageUrl)
+
+                db.collection("cars")
+                    .document(newId)
+                    .set(cocheConUrl)
+                    .await()
+
+                loadCars()
+
+            } catch (e: Exception) {
+                println("❌ Error al subir coche: ${e.localizedMessage}")
+            }
+        }
     }
+
     fun applyFilters(
-        marca: String,
-        modelo: String,
+        marca: String?,
+        modelo: String?,
         precioMin: Double?,
         precioMax: Double?,
         soloElectricos: Boolean
     ) {
-        viewModelScope.launch {
-            var query: Query = db.collection("cars")
-            if (marca.isNotBlank())      query = query.whereEqualTo("marca", marca)
-            if (modelo.isNotBlank())     query = query.whereEqualTo("modelo", modelo)
-            if (precioMin != null)       query = query.whereGreaterThanOrEqualTo("precio", precioMin)
-            if (precioMax != null)       query = query.whereLessThanOrEqualTo("precio", precioMax)
-            if (soloElectricos)          query = query.whereEqualTo("combustible", "Eléctrico")
+        _filteredCars.value = _cars.value.filter { coche ->
+            val cumpleMarca = marca.isNullOrBlank() || coche.marca.contains(marca, ignoreCase = true)
+            val cumpleModelo = modelo.isNullOrBlank() || coche.modelo.contains(modelo, ignoreCase = true)
+            val cumplePrecioMin = precioMin == null || coche.precio >= precioMin
+            val cumplePrecioMax = precioMax == null || coche.precio <= precioMax
+            val cumpleElectrico = !soloElectricos || coche.combustible.equals("Eléctrico", ignoreCase = true)
 
-            val listaFiltrada = query
-                .get().await()
-                .map { doc -> doc.toObject(Coche::class.java).copy(id = doc.id) }
-
-            _filteredCars.value = listaFiltrada
+            cumpleMarca && cumpleModelo && cumplePrecioMin && cumplePrecioMax && cumpleElectrico
         }
     }
 
-    fun addCar(car: Coche) {
-        viewModelScope.launch {
-            _cars.value = _cars.value + car
-            db.collection("cars").document(car.id).set(car).await()
+    suspend fun getCarById(carId: String): Coche? {
+        return try {
+            val snapshot = db.collection("cars").document(carId).get().await()
+            snapshot.toObject(Coche::class.java)?.copy(id = carId)
+        } catch (e: Exception) {
+            println("❌ Error al obtener coche: ${e.localizedMessage}")
+            null
         }
     }
 
-    /**
-     * Carga en paralelo perfil + comentarios para un usuario dado.
-     * Actualiza los StateFlow _selectedProfile y _selectedComments.
-     */
-    fun loadUserData(userId: String) {
+
+    suspend fun getUserById(userId: String): Usuario? {
+        return try {
+            val snapshot = db.collection("users").document(userId).get().await()
+            snapshot.toObject(Usuario::class.java)?.copy(id = userId)
+        } catch (e: Exception) {
+            println("❌ Error al obtener usuario: ${e.localizedMessage}")
+            null
+        }
+    }
+
+
+    // Subir imagen
+    private suspend fun uploadImage(uri: Uri): String {
+        val ref = storage.reference
+            .child("cars/${System.currentTimeMillis()}.jpg")
+
+        println("🔥 SUBIENDO URI: $uri")
+
+        ref.putFile(uri).await()
+        return ref.downloadUrl.await().toString()
+    }
+
+    // Obtener perfil de usuario
+    fun getUserProfile(userId: String) {
         viewModelScope.launch {
-            // Disparamos ambas llamadas simultáneas
-            val userDeferred = async {
-                db.collection("users").document(userId)
-                    .get().await()
-                    .toObject(Usuario::class.java)
-                    ?.copy(id = userId)
+            try {
+                val snapshot = db.collection("users").document(userId).get().await()
+                if (snapshot.exists()) {
+                    val user = snapshot.toObject(Usuario::class.java)!!.copy(id = userId)
+                    _selectedProfile.value = user
+                    _profileError.value = ""
+                } else {
+                    _profileError.value = "El perfil no existe."
+                }
+            } catch (e: Exception) {
+                _profileError.value = "Error al cargar perfil: ${e.localizedMessage}"
             }
-            val commentsDeferred = async {
-                db.collection("users")
-                    .document(userId)
-                    .collection("comments")
-                    .orderBy("timestamp")
-                    .get().await()
-                    .map { doc ->
-                        doc.toObject(Comentario::class.java).copy(id = doc.id)
-                    }
-            }
-
-            _selectedProfile.value = userDeferred.await()
-            _selectedComments.value = commentsDeferred.await()
         }
-    }
-
-    // --- Métodos mínimos para detalle ---
-    suspend fun getCarById(id: String): Coche? {
-        val doc = db.collection("cars").document(id).get().await()
-        return doc.toObject(Coche::class.java)?.copy(id = id)
     }
 }

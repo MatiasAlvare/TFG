@@ -38,6 +38,7 @@ fun LoginScreen(
     onForgotPasswordClick: () -> Unit = {},
     onGuestAccess: () -> Unit = {}
 ) {
+
     val context = LocalContext.current
     val vm: AuthViewModel = viewModel(
         factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
@@ -260,9 +261,11 @@ fun LoginScreen(
     LaunchedEffect(authResult) {
         when (authResult) {
             is AuthRes.Success -> {
+                vm.crearUsuarioSiNoExiste()  // ✅ AÑADIDO
                 onLoginSuccess()
                 vm.clearAuthResult()
             }
+
             is AuthRes.Error -> {
                 Toast.makeText(
                     context,
