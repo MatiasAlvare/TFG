@@ -8,9 +8,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable             // <<<<<<<<<<<<<<<<<
 import androidx.compose.foundation.layout.FlowRow       // <<<<<<<<<<<<<<<<<
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -98,10 +98,9 @@ fun Busqueda(
         }
 
         // Grid de coches filtrados
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+        // Lista de coches filtrados en formato vertical (estilo AutoHero)
+        LazyColumn(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
@@ -111,244 +110,248 @@ fun Busqueda(
             items(filtered, key = { it.id }) { coche ->
                 CocheCard(
                     coche = coche,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     onCarClick(coche.id)
                 }
             }
         }
-    }
 
-    if (showFilters) {
-        AlertDialog(
-            onDismissRequest = { showFilters = false },
-            title = { Text("Filtros", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Marca y modelo
-                    OutlinedTextField(
-                        value = marca,
-                        onValueChange = { marca = it },
-                        label = { Text("Marca") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = modelo,
-                        onValueChange = { modelo = it },
-                        label = { Text("Modelo") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-
-                    // Precio
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = precioMin,
-                            onValueChange = { precioMin = it },
-                            label = { Text("Desde") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            value = precioMax,
-                            onValueChange = { precioMax = it },
-                            label = { Text("Hasta") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-
-                    // Ubicación
-                    OutlinedTextField(
-                        value = ubicacion,
-                        onValueChange = { ubicacion = it },
-                        label = { Text("Ubicación") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-
-                    // Vendedores
-                    Text("Vendedores", style = MaterialTheme.typography.titleMedium)
-                    FlowRow(
+        if (showFilters) {
+            AlertDialog(
+                onDismissRequest = { showFilters = false },
+                title = { Text("Filtros", style = MaterialTheme.typography.titleLarge) },
+                text = {
+                    Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
-                        listOf("Particular", "Concesionario", "Cualquiera").forEach { opt ->
-                            Row(
-                                Modifier
-                                    .clickable { vendedorTipo = opt }
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = (vendedorTipo == opt),
-                                    onClick = { vendedorTipo = opt }
+                        // Marca y modelo
+                        OutlinedTextField(
+                            value = marca,
+                            onValueChange = { marca = it },
+                            label = { Text("Marca") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = modelo,
+                            onValueChange = { modelo = it },
+                            label = { Text("Modelo") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+
+                        // Precio
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = precioMin,
+                                onValueChange = { precioMin = it },
+                                label = { Text("Desde") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = precioMax,
+                                onValueChange = { precioMax = it },
+                                label = { Text("Hasta") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Ubicación
+                        OutlinedTextField(
+                            value = ubicacion,
+                            onValueChange = { ubicacion = it },
+                            label = { Text("Ubicación") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+
+                        // Vendedores
+                        Text("Vendedores", style = MaterialTheme.typography.titleMedium)
+                        FlowRow(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            listOf("Particular", "Concesionario", "Cualquiera").forEach { opt ->
+                                Row(
+                                    Modifier
+                                        .clickable { vendedorTipo = opt }
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = (vendedorTipo == opt),
+                                        onClick = { vendedorTipo = opt }
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(opt)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Año
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = annoMin,
+                                onValueChange = { annoMin = it },
+                                label = { Text("Año min") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = annoMax,
+                                onValueChange = { annoMax = it },
+                                label = { Text("Año max") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Kilómetros
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = kmMin,
+                                onValueChange = { kmMin = it },
+                                label = { Text("Km min") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = kmMax,
+                                onValueChange = { kmMax = it },
+                                label = { Text("Km max") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Carrocería
+                        Text("Carrocería", style = MaterialTheme.typography.titleMedium)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            carrocerias.forEach { opt ->
+                                FilterChip(
+                                    selected = selectedCarrocerias.contains(opt),
+                                    onClick = {
+                                        if (selectedCarrocerias.contains(opt)) selectedCarrocerias.remove(
+                                            opt
+                                        )
+                                        else selectedCarrocerias.add(opt)
+                                    },
+                                    label = { Text(opt) }
                                 )
-                                Spacer(Modifier.width(4.dp))
-                                Text(opt)
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Motor
+                        Text("Motor", style = MaterialTheme.typography.titleMedium)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            combustibles.forEach { opt ->
+                                FilterChip(
+                                    selected = selectedCombustibles.contains(opt),
+                                    onClick = {
+                                        if (selectedCombustibles.contains(opt)) selectedCombustibles.remove(
+                                            opt
+                                        )
+                                        else selectedCombustibles.add(opt)
+                                    },
+                                    label = { Text(opt) }
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Eléctricos
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = soloElectricos,
+                                onCheckedChange = { soloElectricos = it }
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("Sólo eléctricos")
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Equipamiento
+                        Text("Equipamiento", style = MaterialTheme.typography.titleMedium)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            equipamientos.forEach { opt ->
+                                FilterChip(
+                                    selected = selectedEquipamientos.contains(opt),
+                                    onClick = {
+                                        if (selectedEquipamientos.contains(opt)) selectedEquipamientos.remove(
+                                            opt
+                                        )
+                                        else selectedEquipamientos.add(opt)
+                                    },
+                                    label = { Text(opt) }
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        // Color
+                        Text("Color", style = MaterialTheme.typography.titleMedium)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            colores.forEach { opt ->
+                                FilterChip(
+                                    selected = (selectedColor == opt),
+                                    onClick = { selectedColor = opt },
+                                    label = { Text(opt) }
+                                )
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-
-                    // Año
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = annoMin,
-                            onValueChange = { annoMin = it },
-                            label = { Text("Año min") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        onApplyFilters(
+                            marca,
+                            modelo,
+                            precioMin,
+                            precioMax,
+                            ubicacion,
+                            vendedorTipo,
+                            annoMin,
+                            annoMax,
+                            kmMin,
+                            kmMax,
+                            selectedCarrocerias.toList(),
+                            selectedCombustibles.toList(),
+                            soloElectricos,
+                            selectedEquipamientos.toList(),
+                            selectedColor
                         )
-                        OutlinedTextField(
-                            value = annoMax,
-                            onValueChange = { annoMax = it },
-                            label = { Text("Año max") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
+                        showFilters = false
+                    }) {
+                        Text("Aplicar filtros")
                     }
-                    Spacer(Modifier.height(8.dp))
-
-                    // Kilómetros
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = kmMin,
-                            onValueChange = { kmMin = it },
-                            label = { Text("Km min") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            value = kmMax,
-                            onValueChange = { kmMax = it },
-                            label = { Text("Km max") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-
-                    // Carrocería
-                    Text("Carrocería", style = MaterialTheme.typography.titleMedium)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        carrocerias.forEach { opt ->
-                            FilterChip(
-                                selected = selectedCarrocerias.contains(opt),
-                                onClick = {
-                                    if (selectedCarrocerias.contains(opt)) selectedCarrocerias.remove(opt)
-                                    else selectedCarrocerias.add(opt)
-                                },
-                                label = { Text(opt) }
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-
-                    // Motor
-                    Text("Motor", style = MaterialTheme.typography.titleMedium)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        combustibles.forEach { opt ->
-                            FilterChip(
-                                selected = selectedCombustibles.contains(opt),
-                                onClick = {
-                                    if (selectedCombustibles.contains(opt)) selectedCombustibles.remove(opt)
-                                    else selectedCombustibles.add(opt)
-                                },
-                                label = { Text(opt) }
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-
-                    // Eléctricos
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = soloElectricos,
-                            onCheckedChange = { soloElectricos = it }
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text("Sólo eléctricos")
-                    }
-                    Spacer(Modifier.height(8.dp))
-
-                    // Equipamiento
-                    Text("Equipamiento", style = MaterialTheme.typography.titleMedium)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        equipamientos.forEach { opt ->
-                            FilterChip(
-                                selected = selectedEquipamientos.contains(opt),
-                                onClick = {
-                                    if (selectedEquipamientos.contains(opt)) selectedEquipamientos.remove(opt)
-                                    else selectedEquipamientos.add(opt)
-                                },
-                                label = { Text(opt) }
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-
-                    // Color
-                    Text("Color", style = MaterialTheme.typography.titleMedium)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        colores.forEach { opt ->
-                            FilterChip(
-                                selected = (selectedColor == opt),
-                                onClick = { selectedColor = opt },
-                                label = { Text(opt) }
-                            )
-                        }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFilters = false }) {
+                        Text("Cancelar")
                     }
                 }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    onApplyFilters(
-                        marca,
-                        modelo,
-                        precioMin,
-                        precioMax,
-                        ubicacion,
-                        vendedorTipo,
-                        annoMin,
-                        annoMax,
-                        kmMin,
-                        kmMax,
-                        selectedCarrocerias.toList(),
-                        selectedCombustibles.toList(),
-                        soloElectricos,
-                        selectedEquipamientos.toList(),
-                        selectedColor
-                    )
-                    showFilters = false
-                }) {
-                    Text("Aplicar filtros")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showFilters = false }) {
-                    Text("Cancelar")
-                }
-            }
-        )
+            )
+        }
     }
 }

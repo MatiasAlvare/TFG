@@ -88,5 +88,6 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
+    implementation ("com.google.firebase:firebase-messaging:23.3.1")
 
 }

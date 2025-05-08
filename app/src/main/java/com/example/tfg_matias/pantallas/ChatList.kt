@@ -1,4 +1,4 @@
-// ✅ ChatList.kt actualizado: oculta chats cuyo coche ya no existe
+// ✅ ChatList.kt actualizado: NO se eliminan chats huérfanos, se muestran con aviso
 
 package com.example.tfg_matias.pantallas
 
@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -31,25 +32,20 @@ fun ChatList(
         carVM.loadCars()
     }
 
-    // Filtrar chats que SÍ tienen coche asociado y que no ha sido eliminado
-    val chatsFiltrados = chats.filter { chat ->
-        cars.any { it.id == chat.cocheId }
-    }
-
-    if (chatsFiltrados.isEmpty()) {
+    if (chats.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No tienes conversaciones activas.")
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(chatsFiltrados) { chat ->
+            items(chats) { chat ->
                 val coche = cars.find { it.id == chat.cocheId }
 
                 Card(
                     Modifier
                         .fillMaxWidth()
                         .padding(8.dp)
-                        .clickable {
+                        .clickable(enabled = coche != null) {
                             val sellerId = chat.participants.firstOrNull { it != com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid }
                             if (sellerId != null) {
                                 navController.navigate("chat/${chat.chatId}/${chat.cocheId}/$sellerId")
@@ -58,16 +54,31 @@ fun ChatList(
                 ) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         AsyncImage(
-                            model = coche?.imageUrl ?: "",
+                            model = coche?.imageUrl ?: "https://via.placeholder.com/150x100?text=Sin+imagen",
                             contentDescription = null,
-                            modifier = Modifier.size(60.dp)
+                            modifier = Modifier
+                                .size(100.dp)
+                                .fillMaxHeight()
+                                .weight(1f),
+                            contentScale = ContentScale.Crop
                         )
                         Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(coche?.let { "${it.marca} ${it.modelo}" } ?: "Coche eliminado", style = MaterialTheme.typography.titleMedium)
+                        Column(Modifier.weight(2f)) {
+                            Text(
+                                coche?.let { "${it.marca} ${it.modelo}" } ?: "Coche eliminado",
+                                style = MaterialTheme.typography.titleMedium
+                            )
                             if (chat.lastMessage.isNotEmpty()) {
                                 Spacer(Modifier.height(4.dp))
                                 Text(chat.lastMessage, style = MaterialTheme.typography.bodySmall)
+                            }
+                            if (coche == null) {
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    "Este coche ya no está disponible.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
                     }

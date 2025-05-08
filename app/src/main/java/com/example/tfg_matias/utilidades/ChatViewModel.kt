@@ -1,3 +1,5 @@
+// ✅ ChatViewModel.kt actualizado: escucha global de todos los mensajes (en segundo plano)
+
 package com.example.tfg_matias.ViewModel
 
 import androidx.lifecycle.ViewModel
@@ -10,13 +12,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+// 🔄 Datos
+
 data class Chat(
     val chatId: String = "",
     val participants: List<String> = emptyList(),
     val cocheId: String = "",
     val lastMessage: String = "",
     val updatedAt: Long = 0L
-
 )
 
 data class Message(
@@ -36,6 +39,8 @@ class ChatViewModel : ViewModel() {
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages
 
+    private val _globalNewMessages = MutableStateFlow<Map<String, Message>>(emptyMap())
+    val globalNewMessages: StateFlow<Map<String, Message>> = _globalNewMessages
 
     fun loadChats() {
         val userId = auth.currentUser?.uid ?: return
@@ -49,6 +54,34 @@ class ChatViewModel : ViewModel() {
                 }
                 val chats = snapshot?.documents?.mapNotNull { it.toObject(Chat::class.java)?.copy(chatId = it.id) } ?: emptyList()
                 _chatList.value = chats
+            }
+
+        // ✅ Escucha global de TODOS los mensajes en todos los chats del usuario
+        db.collection("chats")
+            .whereArrayContains("participants", userId)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    println("❌ Error escuchando mensajes globales: ${e.localizedMessage}")
+                    return@addSnapshotListener
+                }
+                snapshot?.documents?.forEach { chatDoc ->
+                    val chatId = chatDoc.id
+                    db.collection("chats").document(chatId).collection("messages")
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .limit(1)
+                        .addSnapshotListener { msgSnap, msgError ->
+                            if (msgError != null) {
+                                println("❌ Error escuchando último mensaje: ${msgError.localizedMessage}")
+                                return@addSnapshotListener
+                            }
+                            val newMsg = msgSnap?.documents?.firstOrNull()?.toObject(Message::class.java)
+                            if (newMsg != null) {
+                                _globalNewMessages.value = _globalNewMessages.value.toMutableMap().apply {
+                                    put(chatId, newMsg)
+                                }
+                            }
+                        }
+                }
             }
     }
 
