@@ -28,7 +28,7 @@ import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.Model.Usuario
 import com.example.tfg_matias.R
 import com.example.tfg_matias.ViewModel.CarViewModel
-import com.example.tfg_matias.ViewModel.ChatViewModel
+import com.example.tfg_matias.utilidades.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 

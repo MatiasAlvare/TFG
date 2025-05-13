@@ -189,6 +189,19 @@ fun Perfil(
                                             .delete()
                                             .addOnSuccessListener {
                                                 Toast.makeText(context, "Publicación eliminada", Toast.LENGTH_SHORT).show()
+
+                                                // 🔥 También borramos los chats asociados a ese coche
+                                                db.collection("chats")
+                                                    .whereEqualTo("cocheId", coche.id)
+                                                    .get()
+                                                    .addOnSuccessListener { snapshot ->
+                                                        for (doc in snapshot.documents) {
+                                                            db.collection("chats").document(doc.id).delete()
+                                                        }
+                                                    }
+
+                                                // 🚀 ACTUALIZAR LA LISTA LOCAL
+                                                vm.removeCarLocally(coche.id)
                                             }
                                             .addOnFailureListener {
                                                 Toast.makeText(context, "Error al eliminar", Toast.LENGTH_SHORT).show()

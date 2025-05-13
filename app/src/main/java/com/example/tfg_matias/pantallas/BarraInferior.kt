@@ -1,67 +1,68 @@
-package com.example.tfg_matias.ui.theme  // Ajusta el package según tu proyecto
+package com.example.tfg_matias.ui.theme
 
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.tfg_matias.R
+import com.example.tfg_matias.utilidades.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
 
-data class BottomNavItem(
-    val label: String,
-    val route: String,
-    val iconRes: Int
-)
-
 @Composable
-fun BarraInferior(navController: NavController) {
-    // ¿Hay usuario logueado?
+fun BarraInferior(
+    navController: NavController,
+    chatVM: ChatViewModel
+) {
     val user = FirebaseAuth.getInstance().currentUser
+    val unreadCount by chatVM.unreadCount.collectAsState()
 
-    // Ruta actual
-    val currentBackStack by navController.currentBackStackEntryAsState()
-    val currentRoute = currentBackStack?.destination?.route
-
-    // Definimos nuestros 4 botones
     val items = listOf(
-        BottomNavItem("Inicio",  "principal", R.drawable.ic_coche),
-        BottomNavItem("Vender",  "vender",    R.drawable.ic_vender_coche),
-        BottomNavItem("Chats",   "chats",     R.drawable.comentario),
-        BottomNavItem("Perfil",  "perfil/me", R.drawable.ic_usuario)
+        BottomNavItem("Inicio", "principal", R.drawable.ic_coche),
+        BottomNavItem("Vender", "vender", R.drawable.ic_vender_coche),
+        BottomNavItem("Chats", "chats", R.drawable.comentario),
+        BottomNavItem("Perfil", "perfil/me", R.drawable.ic_usuario)
     )
 
     NavigationBar {
         items.forEach { item ->
+            val isChatTab = item.route == "chats"
             NavigationBarItem(
                 icon = {
-                    Icon(
-                        painter = painterResource(id = item.iconRes),
-                        contentDescription = item.label,
-                        modifier = Modifier.size(24.dp)      // tamaño estándar
-                    )
-                },
-                label     = { androidx.compose.material3.Text(item.label) },
-                selected  = currentRoute == item.route,
-                onClick   = {
-                    if (item.route == "principal") {
-                        // Siempre permito "Inicio"
-                        navController.navigate(item.route) {
-                            launchSingleTop = true
+                    if (isChatTab && unreadCount > 0) {
+                        BadgedBox(
+                            badge = {
+                                Badge {
+                                    Text(unreadCount.toString())
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(id = item.iconRes),
+                                contentDescription = item.label,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
-                    } else if (user != null) {
-                        // Si está logueado, permito las demás pestañas
+                    } else {
+                        Icon(
+                            painter = painterResource(id = item.iconRes),
+                            contentDescription = item.label,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
+                label = { Text(item.label) },
+                selected = false,
+                onClick = {
+                    if (user != null || item.route == "principal") {
                         navController.navigate(item.route) {
                             launchSingleTop = true
                         }
                     } else {
-                        // Si no hay sesión, fuerzo al login
                         navController.navigate("login") {
                             popUpTo("login") { inclusive = true }
                         }
@@ -71,3 +72,9 @@ fun BarraInferior(navController: NavController) {
         }
     }
 }
+
+data class BottomNavItem(
+    val label: String,
+    val route: String,
+    val iconRes: Int
+)

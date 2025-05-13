@@ -154,4 +154,9 @@ class CarViewModel : ViewModel() {
             }
         }
     }
+
+    fun removeCarLocally(carId: String) {
+        _cars.value = _cars.value.filterNot { it.id == carId }
+        _filteredCars.value = _filteredCars.value.filterNot { it.id == carId }
+    }
 }
