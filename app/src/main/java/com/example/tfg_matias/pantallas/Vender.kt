@@ -1,23 +1,24 @@
+// ✅ Vender.kt actualizado con botón 'Borrar campos', selector 'Tipo de cambio', y título ajustado
+
 @file:OptIn(
-    ExperimentalMaterial3Api::class,
-    ExperimentalFoundationApi::class
+    ExperimentalMaterial3Api::class
 )
 package com.example.tfg_matias.pantallas
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.GetMultipleContents
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,66 +26,57 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.tfg_matias.Model.Coche
-import com.example.tfg_matias.R
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.util.*
 
 @Composable
+fun DesplegableCampo(label: String, valor: String, opciones: List<String>, onSelect: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+        OutlinedTextField(
+            value = valor,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth()
+        )
+
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            opciones.forEach { opcion ->
+                DropdownMenuItem(text = { Text(opcion) }, onClick = {
+                    onSelect(opcion)
+                    expanded = false
+                })
+            }
+        }
+    }
+}
+
+@Composable
 fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
-    val context = LocalContext.current
 
-    val marcas = listOf(
-        "Abarth",
-        "Alfa Romeo",
-        "Audi",
-        "BMW",
-        "Citroën",
-        "Cupra",
-        "Dacia",
-        "DS",
-        "Fiat",
-        "Ford",
-        "Honda",
-        "Hyundai",
-        "Jaguar",
-        "Jeep",
-        "Kia",
-        "Mazda",
-        "Mercedes-Benz",
-        "Mini",
-        "Mitsubishi",
-        "Nissan",
-        "Opel",
-        "Peugeot",
-        "Porsche",
-        "Renault",
-        "Seat",
-        "Skoda",
-        "Subaru",
-        "Suzuki",
-        "Tesla",
-        "Toyota",
-        "Volkswagen",
-        "Volvo"
-    ).sorted()
-    val combustibles = listOf("Gasolina", "Diésel", "Eléctrico", "Híbrido")
+    val marcas = listOf("Audi", "BMW", "Ford", "Mercedes", "Seat", "Toyota", "Volkswagen")
     val años = (1975..Calendar.getInstance().get(Calendar.YEAR)).toList().reversed()
+    val combustibles = listOf("Gasolina", "Diésel", "Eléctrico", "Híbrido")
     val provincias = mapOf(
-        "Madrid" to listOf("Madrid", "Alcalá de Henares", "Getafe", "Leganés", "Móstoles"),
-        "Barcelona" to listOf("Barcelona", "Hospitalet", "Sabadell", "Terrassa")
+        "Madrid" to listOf("Madrid", "Alcalá de Henares", "Móstoles"),
+        "Barcelona" to listOf("Barcelona", "Hospitalet", "Terrassa")
     )
-    val todasProvincias = provincias.keys.toList().sorted()
+    val colores = listOf(
+        "Blanco", "Negro", "Gris", "Rojo", "Azul",
+        "Verde", "Amarillo", "Naranja", "Marrón", "Beige"
+    )
 
+
+    var showErrorDialog by remember { mutableStateOf(false) }
     var marca by remember { mutableStateOf("") }
     var modelo by remember { mutableStateOf("") }
     var anio by remember { mutableStateOf("") }
@@ -99,274 +91,185 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
     var kilometros by remember { mutableStateOf("") }
     var precio by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
-
-    var marcaExpanded by remember { mutableStateOf(false) }
-    var anioExpanded by remember { mutableStateOf(false) }
-    var provinciaExpanded by remember { mutableStateOf(false) }
-    var ciudadExpanded by remember { mutableStateOf(false) }
-    var combustibleExpanded by remember { mutableStateOf(false) }
-
+    var automatico by remember { mutableStateOf<Boolean?>(null) }
     var photoUris by remember { mutableStateOf(listOf<Uri>()) }
-    val photoPicker = rememberLauncherForActivityResult(GetMultipleContents()) { uris: List<Uri> ->
+    var principalIndex by remember { mutableIntStateOf(0) }
+    var showDialog by remember { mutableStateOf(false) }
+
+    val photoPicker = rememberLauncherForActivityResult(GetMultipleContents()) { uris ->
         photoUris = photoUris + uris
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text("Fotos de tu coche", style = MaterialTheme.typography.titleMedium)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.LightGray),
-            contentAlignment = Alignment.Center
-        ) {
-            if (photoUris.isEmpty()) {
-                IconButton(onClick = { photoPicker.launch("image/*") }) {
-                    Icon(
-                        painterResource(id = R.drawable.imagenes),
-                        contentDescription = "Subir fotos",
-                        modifier = Modifier.size(48.dp),
-                        tint = Color.Gray
-                    )
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Text(
+            "Publica tu coche en CarFlow",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFEDEDED)).padding(12.dp)) {
+            Text("Fotos de tu coche", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val sortedUris = if (photoUris.isNotEmpty()) listOf(photoUris[principalIndex]) + photoUris.filterIndexed { i, _ -> i != principalIndex } else emptyList()
+                sortedUris.chunked(2).forEachIndexed { rowIndex, rowUris ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        rowUris.forEachIndexed { i, uri ->
+                            val index = photoUris.indexOf(uri)
+                            val isPrincipal = index == principalIndex
+                            val number = sortedUris.indexOf(uri) + 1
+                            Card(modifier = Modifier.weight(1f).height(160.dp), shape = RoundedCornerShape(12.dp)) {
+                                Box(Modifier.fillMaxSize()) {
+                                    AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxSize().clickable {
+                                        principalIndex = index
+                                    })
+                                    Text(
+                                        if (isPrincipal) "PRINCIPAL" else "$number",
+                                        color = Color.White,
+                                        modifier = Modifier.align(Alignment.TopStart).background(if (index == principalIndex) Color.Black else Color.Gray).padding(4.dp)
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            photoUris = photoUris.toMutableList().also { it.removeAt(index) }
+                                            if (principalIndex >= photoUris.size) principalIndex = 0
+                                        },
+                                        modifier = Modifier.align(Alignment.BottomCenter)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Eliminar")
+                                    }
+                                }
+                            }
+                        }
+                        if (rowUris.size == 1) Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
-            } else {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp)
+                Card(
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(140.dp)
+                        .clickable { photoPicker.launch("image/*") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
-                    items(photoUris) { uri ->
-                        AsyncImage(
-                            model = uri,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(120.dp)
-                                .padding(end = 8.dp)
-                                .clickable { photoPicker.launch("image/*") }
-                        )
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "+",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = Color.Black
+                            )
+                            Text(
+                                "Añadir más",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.Black
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Marca
-        ExposedDropdownMenuBox(
-            expanded = marcaExpanded,
-            onExpandedChange = { marcaExpanded = !marcaExpanded }
-        ) {
-            OutlinedTextField(
-                value = marca,
-                onValueChange = { marca = it },
-                readOnly = true,
-                label = { Text("Marca") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = marcaExpanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            ExposedDropdownMenu(
-                expanded = marcaExpanded,
-                onDismissRequest = { marcaExpanded = false }
-            ) {
-                marcas.forEach { selectionOption ->
-                    DropdownMenuItem(
-                        text = { Text(selectionOption) },
-                        onClick = {
-                            marca = selectionOption
-                            marcaExpanded = false
-                        }
-                    )
-                }
-            }
-        }
-
-        // Modelo
+                Spacer(Modifier.height(12.dp))
+        DesplegableCampo("Selecciona marca", marca, marcas) { marca = it }
         OutlinedTextField(
             value = modelo,
             onValueChange = { modelo = it },
             label = { Text("Modelo") },
             modifier = Modifier.fillMaxWidth()
         )
-
-        // Año
-        ExposedDropdownMenuBox(
-            expanded = anioExpanded,
-            onExpandedChange = { anioExpanded = !anioExpanded }
-        ) {
-            OutlinedTextField(
-                value = anio,
-                onValueChange = { anio = it },
-                readOnly = true,
-                label = { Text("Año") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = anioExpanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            ExposedDropdownMenu(
-                expanded = anioExpanded,
-                onDismissRequest = { anioExpanded = false }
-            ) {
-                años.forEach { selectionOption ->
-                    DropdownMenuItem(
-                        text = { Text(selectionOption.toString()) },
-                        onClick = {
-                            anio = selectionOption.toString()
-                            anioExpanded = false
-                        }
-                    )
-                }
-            }
+        DesplegableCampo("Selecciona año", anio, años.map { it.toString() }) { anio = it }
+        DesplegableCampo("Selecciona provincia", provincia, provincias.keys.sorted()) {
+            provincia = it
         }
-
-        // Provincia
-        ExposedDropdownMenuBox(
-            expanded = provinciaExpanded,
-            onExpandedChange = { provinciaExpanded = !provinciaExpanded }
-        ) {
-            OutlinedTextField(
-                value = provincia,
-                onValueChange = { provincia = it },
-                readOnly = true,
-                label = { Text("Provincia") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = provinciaExpanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            ExposedDropdownMenu(
-                expanded = provinciaExpanded,
-                onDismissRequest = { provinciaExpanded = false }
-            ) {
-                todasProvincias.forEach { selectionOption ->
-                    DropdownMenuItem(
-                        text = { Text(selectionOption) },
-                        onClick = {
-                            provincia = selectionOption
-                            provinciaExpanded = false
-                            ciudad = ""
-                        }
-                    )
-                }
-            }
+        if (provincia.isNotBlank()) {
+            DesplegableCampo(
+                "Selecciona ciudad",
+                ciudad,
+                provincias[provincia] ?: emptyList()
+            ) { ciudad = it }
         }
+        DesplegableCampo("Combustible", combustible, combustibles) { combustible = it }
 
-        // Ciudad
-        if (provincias[provincia] != null) {
-            ExposedDropdownMenuBox(
-                expanded = ciudadExpanded,
-                onExpandedChange = { ciudadExpanded = !ciudadExpanded }
+        Spacer(modifier = Modifier.height(12.dp))
+        Text("Tipo de cambio", style = MaterialTheme.typography.labelLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Color(0xFFE0E0E0))
+                .padding(4.dp)
+        ) {
+            Box(
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(50))
+                    .background(if (automatico == true) Color.Black else Color(0xFFE0E0E0))
+                    .clickable { automatico = true }.padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                OutlinedTextField(
-                    value = ciudad,
-                    onValueChange = { ciudad = it },
-                    readOnly = true,
-                    label = { Text("Ciudad") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = ciudadExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
+                Text(
+                    "Automático",
+                    color = if (automatico == true) Color.White else Color.Black,
+                    style = MaterialTheme.typography.labelLarge
                 )
-                ExposedDropdownMenu(
-                    expanded = ciudadExpanded,
-                    onDismissRequest = { ciudadExpanded = false }
-                ) {
-                    provincias[provincia]?.forEach { selectionOption ->
-                        DropdownMenuItem(
-                            text = { Text(selectionOption) },
-                            onClick = {
-                                ciudad = selectionOption
-                                ciudadExpanded = false
-                            }
-                        )
-                    }
-                }
             }
-        }
-
-        // Combustible
-        ExposedDropdownMenuBox(
-            expanded = combustibleExpanded,
-            onExpandedChange = { combustibleExpanded = !combustibleExpanded }
-        ) {
-            OutlinedTextField(
-                value = combustible,
-                onValueChange = { combustible = it },
-                readOnly = true,
-                label = { Text("Combustible") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = combustibleExpanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            ExposedDropdownMenu(
-                expanded = combustibleExpanded,
-                onDismissRequest = { combustibleExpanded = false }
+            Box(
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(50))
+                    .background(if (automatico == false) Color.Black else Color(0xFFE0E0E0))
+                    .clickable { automatico = false }.padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                combustibles.forEach { selectionOption ->
-                    DropdownMenuItem(
-                        text = { Text(selectionOption) },
-                        onClick = {
-                            combustible = selectionOption
-                            combustibleExpanded = false
-                        }
-                    )
-                }
+                Text(
+                    "Manual",
+                    color = if (automatico == false) Color.White else Color.Black,
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
         }
 
-        // Otros campos
+        Spacer(modifier = Modifier.height(12.dp))
+
         OutlinedTextField(
             value = puertas,
             onValueChange = { puertas = it },
             label = { Text("Puertas") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = plazas,
             onValueChange = { plazas = it },
             label = { Text("Plazas") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = cilindrada,
             onValueChange = { cilindrada = it },
             label = { Text("Cilindrada (cc)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = potencia,
             onValueChange = { potencia = it },
             label = { Text("Potencia (CV)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
-        OutlinedTextField(
-            value = color,
-            onValueChange = { color = it },
-            label = { Text("Color") },
-            modifier = Modifier.fillMaxWidth()
-        )
+
+        DesplegableCampo("Color", color, colores) { color = it }
+
         OutlinedTextField(
             value = kilometros,
             onValueChange = { kilometros = it },
             label = { Text("Kilómetros") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = precio,
             onValueChange = { precio = it },
             label = { Text("Precio") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
@@ -376,131 +279,114 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Publicar
+        Spacer(modifier = Modifier.height(12.dp))
+
         Button(
             onClick = {
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-                        val storage = FirebaseStorage.getInstance()
-                        val urls = mutableListOf<String>()
-
-                        if (photoUris.isNotEmpty()) {
-                            CoroutineScope(Dispatchers.Main).launch {
-                                Toast.makeText(context, "Subiendo fotos...", Toast.LENGTH_SHORT)
-                                    .show()
-                            }
-                        }
-
-                        for ((i, uri) in photoUris.withIndex()) {
-                            val ref =
-                                storage.reference.child("cars/$uid/${System.currentTimeMillis()}_$i.jpg")
-                            ref.putFile(uri)
-                                .addOnSuccessListener {
-                                    ref.downloadUrl.addOnSuccessListener { downloadUrl ->
-                                        urls.add(downloadUrl.toString())
-
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            Toast.makeText(
-                                                context,
-                                                "Foto $i subida",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-
-                                        // Si todas las fotos ya están subidas
-                                        if (urls.size == photoUris.size) {
-                                            val nuevo = Coche(
-                                                id = "",
-                                                ownerId = uid,
-                                                tipo = "Venta",
-                                                fotos = urls,
-                                                marca = marca,
-                                                modelo = modelo,
-                                                carroceria = "",
-                                                combustible = combustible,
-                                                año = anio,
-                                                automatico = false,
-                                                etiqueta = "",
-                                                color = color,
-                                                puertas = puertas.toIntOrNull() ?: 0,
-                                                plazas = plazas.toIntOrNull() ?: 0,
-                                                cilindrada = cilindrada.toIntOrNull() ?: 0,
-                                                potenciaCv = potencia.toIntOrNull() ?: 0,
-                                                kilometros = kilometros.toIntOrNull() ?: 0,
-                                                precio = precio.toDoubleOrNull() ?: 0.0,
-                                                descripcion = descripcion,
-                                                provincia = provincia,
-                                                ciudad = ciudad,
-                                                imageUrl = urls.firstOrNull() ?: ""
-                                            )
-
-                                            onSubmit(nuevo, photoUris)
-                                        }
-                                    }.addOnFailureListener { e ->
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            Toast.makeText(
-                                                context,
-                                                "Error URL: ${e.localizedMessage}",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        }
-                                    }
-                                }
-                                .addOnFailureListener { e ->
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        Toast.makeText(
-                                            context,
-                                            "Error al subir foto: ${e.localizedMessage}",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }
-                        }
-
-                        if (photoUris.isEmpty()) {
-                            val nuevo = Coche(
-                                id = "",
-                                ownerId = uid,
-                                tipo = "Venta",
-                                fotos = urls,
-                                marca = marca,
-                                modelo = modelo,
-                                carroceria = "",
-                                combustible = combustible,
-                                año = anio,
-                                automatico = false,
-                                etiqueta = "",
-                                color = color,
-                                puertas = puertas.toIntOrNull() ?: 0,
-                                plazas = plazas.toIntOrNull() ?: 0,
-                                cilindrada = cilindrada.toIntOrNull() ?: 0,
-                                potenciaCv = potencia.toIntOrNull() ?: 0,
-                                kilometros = kilometros.toIntOrNull() ?: 0,
-                                precio = precio.toDoubleOrNull() ?: 0.0,
-                                descripcion = descripcion,
-                                provincia = provincia,
-                                ciudad = ciudad,
-                                imageUrl = ""
-                            )
-                            CoroutineScope(Dispatchers.Main).launch {
-                                onSubmit(nuevo, photoUris)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            Toast.makeText(
-                                context,
-                                "Error: ${e.localizedMessage}",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                }
+                marca = ""; modelo = ""; anio = ""; provincia = ""; ciudad = ""
+                combustible = ""; puertas = ""; plazas = ""; cilindrada = ""; potencia = ""
+                color = ""; kilometros = ""; precio = ""; descripcion = ""; photoUris = emptyList()
+                principalIndex = 0; automatico = null
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Black,
+                contentColor = Color.White
+            )
+        ) {
+            Text("Borrar campos")
+        }
+
+        Button(
+            onClick = {
+                if (listOf(
+                        marca,
+                        modelo,
+                        anio,
+                        provincia,
+                        ciudad,
+                        combustible,
+                        puertas,
+                        plazas,
+                        cilindrada,
+                        potencia,
+                        color,
+                        kilometros,
+                        precio,
+                        descripcion
+                    ).any { it.isBlank() }
+                ) {
+                    showErrorDialog = true
+                    return@Button
+                }
+
+                val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
+                val coche = Coche(
+                    id = "",
+                    ownerId = uid,
+                    tipo = "Venta",
+                    fotos = listOf(),
+                    marca = marca,
+                    modelo = modelo,
+                    carroceria = "",
+                    combustible = combustible,
+                    año = anio,
+                    automatico = automatico ?: false,
+                    etiqueta = "",
+                    color = color,
+                    puertas = puertas.toIntOrNull() ?: 0,
+                    plazas = plazas.toIntOrNull() ?: 0,
+                    cilindrada = cilindrada.toIntOrNull() ?: 0,
+                    potenciaCv = potencia.toIntOrNull() ?: 0,
+                    kilometros = kilometros.toIntOrNull() ?: 0,
+                    precio = precio.toDoubleOrNull() ?: 0.0,
+                    descripcion = descripcion,
+                    provincia = provincia,
+                    ciudad = ciudad,
+                    imageUrl = ""
+                )
+                onSubmit(coche, photoUris)
+                showDialog = true
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Red,
+                contentColor = Color.White
+            )
         ) {
             Text("Publicar coche")
+        }
+
+// Dialogo de éxito
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = { Text("¡Coche publicado!") },
+                text = { Text("Tu coche ha sido publicado correctamente.") },
+                confirmButton = {
+
+                    Button(onClick = { showDialog = false }) {
+                        Text("Aceptar")
+                    }
+                }
+            )
+        }
+
+// Dialogo de error si faltan campos
+        if (showErrorDialog) {
+            AlertDialog(
+                onDismissRequest = { showErrorDialog = false },
+                title = { Text("Error") },
+                text = { Text("Tienes que rellenar todos los campos para poder publicar tu coche") },
+                confirmButton = {
+                    Button(
+                        onClick = { showErrorDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+                    ) {
+                        Text("Aceptar")
+                    }
+                }
+            )
         }
     }
 }

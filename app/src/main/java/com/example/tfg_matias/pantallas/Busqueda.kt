@@ -7,10 +7,12 @@
 package com.example.tfg_matias.pantallas
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,11 +21,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.R
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -63,26 +73,83 @@ fun Busqueda(
     var color by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
+        // Logo + título
         Row(
-            Modifier
+            modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text("Buscar coches") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            Image(
+                painter = painterResource(id = R.drawable.logo_carflow),
+                contentDescription = "Logo CarFlow",
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(modifier = Modifier.width(45.dp))
+            Text(
+                text = "Coches publicados",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            )
+        }
+
+        // Buscador + botón de filtros
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(56.dp)
-            )
-            Spacer(Modifier.width(8.dp))
+                    .height(40.dp)
+                    .border(
+                        width = 1.5.dp,
+                        color = Color.Black,
+                        shape = RoundedCornerShape(50)
+                    )
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = TextStyle(color = Color.Black),
+                    decorationBox = { innerTextField ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Buscar",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            if (query.isEmpty()) {
+                                Text(
+                                    "Buscar coches",
+                                    color = Color(0xFF666666),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
+            }
+
             IconButton(onClick = { showFilters = true }) {
-                Icon(painter = painterResource(id = R.drawable.ic_filtrar), contentDescription = "Filtros", modifier = Modifier.size(40.dp))
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_filtrar),
+                    contentDescription = "Filtros",
+                    modifier = Modifier.size(30.dp)
+                )
             }
         }
+
 
         LazyColumn(
             contentPadding = PaddingValues(16.dp),

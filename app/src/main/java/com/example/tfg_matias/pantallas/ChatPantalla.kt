@@ -62,6 +62,7 @@ fun ChatPantalla(
         vendedor = carVM.getUserById(sellerId)
     }
 
+
     Column(Modifier.fillMaxSize()) {
 
         // Encabezado del chat

@@ -10,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tfg_matias.ViewModel.CarViewModel
 import com.example.tfg_matias.navegacion.Navegacion
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -21,6 +23,11 @@ class MainActivity : ComponentActivity() {
         val chatId = extras?.getString("chatId")
         val cocheId = extras?.getString("cocheId")
         val sellerId = extras?.getString("sellerId")
+        val settings = FirebaseFirestoreSettings.Builder()
+            .setPersistenceEnabled(true)
+            .build()
+
+        FirebaseFirestore.getInstance().firestoreSettings = settings
 
         setContent {
             val carVM: CarViewModel = viewModel()
