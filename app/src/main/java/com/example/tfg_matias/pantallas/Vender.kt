@@ -63,12 +63,26 @@ fun DesplegableCampo(label: String, valor: String, opciones: List<String>, onSel
 @Composable
 fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
 
-    val marcas = listOf("Audi", "BMW", "Ford", "Mercedes", "Seat", "Toyota", "Volkswagen")
+    val marcas = listOf("Abarth", "Alfa Romeo", "Audi", "BMW", "Chevrolet", "Citroën", "Cupra", "Dacia",
+        "Fiat", "Ford", "Honda", "Hyundai", "Jaguar", "Jeep", "Kia", "Lancia", "Land Rover",
+        "Lexus", "Mazda", "Mercedes-Benz", "Mini", "Mitsubishi", "Nissan", "Opel",
+        "Peugeot", "Porsche", "Renault", "Seat", "Skoda", "Smart", "SsangYong",
+        "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo")
     val años = (1975..Calendar.getInstance().get(Calendar.YEAR)).toList().reversed()
     val combustibles = listOf("Gasolina", "Diésel", "Eléctrico", "Híbrido")
     val provincias = mapOf(
-        "Madrid" to listOf("Madrid", "Alcalá de Henares", "Móstoles"),
-        "Barcelona" to listOf("Barcelona", "Hospitalet", "Terrassa")
+        "Madrid" to listOf("Madrid", "Alcalá de Henares", "Móstoles", "Leganés", "Getafe"),
+        "Barcelona" to listOf("Barcelona", "Hospitalet", "Terrassa", "Badalona"),
+        "Valencia" to listOf("Valencia", "Torrent", "Gandía"),
+        "Sevilla" to listOf("Sevilla", "Dos Hermanas", "Alcalá de Guadaíra"),
+        "Zaragoza" to listOf("Zaragoza", "Calatayud"),
+        "Málaga" to listOf("Málaga", "Marbella", "Fuengirola"),
+        "Alicante" to listOf("Alicante", "Elche", "Benidorm"),
+        "Murcia" to listOf("Murcia", "Cartagena"),
+        "Cádiz" to listOf("Cádiz", "Jerez", "Algeciras"),
+        "Granada" to listOf("Granada", "Motril", "Baza"),
+        "Vizcaya" to listOf("Bilbao", "Barakaldo", "Getxo"),
+        "La Coruña" to listOf("A Coruña", "Santiago", "Ferrol")
     )
     val colores = listOf(
         "Blanco", "Negro", "Gris", "Rojo", "Azul",
@@ -227,6 +241,16 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        val etiquetas = listOf(
+            "🟦 Etiqueta CERO",
+            "🟢🟦 Etiqueta ECO",
+            "🟢 Etiqueta C",
+            "🟡 Etiqueta B",
+            "🚫 Sin etiqueta"
+        )
+        var etiqueta by remember { mutableStateOf("") }
+        DesplegableCampo("Etiqueta", etiqueta, etiquetas) { etiqueta = it }
+
         OutlinedTextField(
             value = puertas,
             onValueChange = { puertas = it },
@@ -332,7 +356,7 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
                     combustible = combustible,
                     año = anio,
                     automatico = automatico ?: false,
-                    etiqueta = "",
+                    etiqueta = etiqueta,
                     color = color,
                     puertas = puertas.toIntOrNull() ?: 0,
                     plazas = plazas.toIntOrNull() ?: 0,

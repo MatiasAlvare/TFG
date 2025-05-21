@@ -1,29 +1,35 @@
-// ✅ Detalle.kt actualizado: agregado chequeo robusto en Contactar
+// Detalle.kt completo con botón de retroceso flotante, bloques estilizados y etiquetas listas
+
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.example.tfg_matias.pantallas
 
 import android.widget.Toast
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
 import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.Model.Usuario
 import com.example.tfg_matias.R
@@ -31,8 +37,11 @@ import com.example.tfg_matias.ViewModel.CarViewModel
 import com.example.tfg_matias.utilidades.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Detalle(
     carId: String,
@@ -49,6 +58,11 @@ fun Detalle(
     var coche by remember { mutableStateOf<Coche?>(null) }
     var vendedor by remember { mutableStateOf<Usuario?>(null) }
     var isOwnCar by remember { mutableStateOf(false) }
+    var showProfileImage by remember { mutableStateOf(false) }
+
+
+    var showGallery by remember { mutableStateOf(false) }
+    var initialPage by remember { mutableStateOf(0) }
 
     LaunchedEffect(carId) {
         coche = vm.getCarById(carId)
@@ -58,101 +72,140 @@ fun Detalle(
         }
     }
 
-    @Composable
-    fun FichaItem(label: String, value: String) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(label, style = MaterialTheme.typography.bodyMedium)
-            Text(value, style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-
     coche?.let { c ->
+        val imagenes = if (c.fotos.isNotEmpty()) c.fotos else listOfNotNull(c.imageUrl.takeIf { it.isNotBlank() })
+        var imagenSeleccionada by remember { mutableStateOf(imagenes.firstOrNull() ?: "") }
+
         Column(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.surface)
         ) {
-            TopAppBar(
-                title = { Text("${c.precio} € • ${c.marca} ${c.modelo}") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-
-            LazyRow(
-                modifier = Modifier
-                    .height(220.dp)
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(c.fotos) { url ->
-                    Image(
-                        painter = rememberAsyncImagePainter(url),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(220.dp)
-                            .clip(RoundedCornerShape(8.dp))
+            // Imagen principal con botón flotante
+            Box {
+                AsyncImage(
+                    model = imagenSeleccionada,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                        .clickable {
+                            initialPage = imagenes.indexOf(imagenSeleccionada)
+                            showGallery = true
+                        }
+                )
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp)
+                        .background(Color.White.copy(alpha = 0.7f), shape = RoundedCornerShape(50))
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = Color.Black
                     )
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            // Miniaturas
+            LazyRow(
+                modifier = Modifier.padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                itemsIndexed(imagenes) { _, url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { imagenSeleccionada = url }
+                    )
+                }
+            }
 
+            if (showGallery) {
+                Dialog(
+                    onDismissRequest = { showGallery = false },
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { imagenes.size })
+                        Surface(shape = RoundedCornerShape(12.dp)) {
+                            Box {
+                                HorizontalPager(state = pagerState) { page ->
+                                    AsyncImage(
+                                        model = imagenes[page],
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { showGallery = false },
+                                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.Black)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Precio
             Card(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(12.dp)
+                Modifier.fillMaxWidth().padding(16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("${c.marca} ${c.modelo} ${c.carroceria}".trim(), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                    Spacer(Modifier.height(8.dp))
+                    Text("Precio al contado", style = MaterialTheme.typography.bodySmall)
+                    Text("${c.precio} €", color = Color.Red, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // Ficha técnica
+            Card(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(6.dp)
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Ficha técnica", style = MaterialTheme.typography.titleMedium)
                     HorizontalDivider()
-
-                    FichaItem("Marca", c.marca)
-                    FichaItem("Modelo", c.modelo)
-                    FichaItem("Año", c.año)
-                    FichaItem("Provincia", c.provincia)
-                    if (c.ciudad.isNotEmpty()) FichaItem("Ciudad", c.ciudad)
-                    FichaItem("Kilómetros", "${c.kilometros} km")
-                    FichaItem("Combustible", c.combustible)
-                    FichaItem("Cambio", if (c.automatico) "Automático" else "Manual")
-                    FichaItem("Color", c.color)
-                    FichaItem("Puertas", "${c.puertas}")
-                    FichaItem("Plazas", "${c.plazas}")
-                    FichaItem("Cilindrada", "${c.cilindrada} cc")
-                    FichaItem("Potencia", "${c.potenciaCv} CV")
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FichaRow("Marca", c.marca, "Modelo", c.modelo)
+                        FichaRow("Año", c.año, "Provincia", c.provincia)
+                        if (c.ciudad.isNotEmpty()) FichaRow("Ciudad", c.ciudad, "Color", c.color)
+                        FichaRow("Kilómetros", "${c.kilometros} km", "Combustible", c.combustible)
+                        FichaRow("Cambio", if (c.automatico) "Automático" else "Manual", "Puertas", "${c.puertas}")
+                        FichaRow("Plazas", "${c.plazas}", "Cilindrada", "${c.cilindrada} cc")
+                        FichaRow("Potencia", "${c.potenciaCv} CV", "Etiqueta", etiquetaVisual(c.etiqueta))
+                    }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            Card(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
+            // Descripción
+            Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(6.dp)) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Comentarios del anunciante", style = MaterialTheme.typography.titleMedium)
+                    Text("Descripción del anunciante", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
                     Text(c.descripcion)
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            Card(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
+            // Vendedor
+            Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(6.dp)) {
                 Row(Modifier.padding(16.dp)) {
                     if (vendedor?.photoUrl?.isNotBlank() == true) {
                         AsyncImage(
@@ -161,6 +214,7 @@ fun Detalle(
                             modifier = Modifier
                                 .size(60.dp)
                                 .clip(RoundedCornerShape(30.dp))
+                                .clickable { showProfileImage = true }
                         )
                     } else {
                         Icon(
@@ -171,19 +225,38 @@ fun Detalle(
                                 .clip(RoundedCornerShape(30.dp))
                         )
                     }
+
+                    if (showProfileImage && vendedor?.photoUrl?.isNotBlank() == true) {
+                        AlertDialog(
+                            onDismissRequest = { showProfileImage = false },
+                            confirmButton = {},
+                            text = {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1f),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(
+                                        model = vendedor!!.photoUrl,
+                                        contentDescription = "Foto ampliada",
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        )
+                    }
+
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text(
-                            vendedor?.name ?: "Usuario no disponible",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            if (vendedor != null) "★ ${vendedor!!.valoracion}" else "Sin valoración",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Text(vendedor?.name ?: "Usuario no disponible", style = MaterialTheme.typography.titleMedium)
+                        Text(if (vendedor != null) "★ ${vendedor!!.valoracion}" else "Sin valoración", style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(8.dp))
                         if (vendedor != null) {
-                            Button(onClick = { onViewSeller(vendedor!!.id) }) {
+                            Button(
+                                onClick = { onViewSeller(vendedor!!.id) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
+                            ) {
                                 Text("Ver perfil")
                             }
                             Spacer(Modifier.height(8.dp))
@@ -195,38 +268,50 @@ fun Detalle(
                                             if (!c.ownerId.isNullOrEmpty() && !chatId.isNullOrEmpty()) {
                                                 onContact(chatId, c.id, c.ownerId)
                                             } else {
-                                                Toast.makeText(
-                                                    context,
-                                                    "Error al iniciar el chat. Intenta más tarde.",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
+                                                Toast.makeText(context, "Error al iniciar el chat", Toast.LENGTH_SHORT).show()
                                             }
                                         }
-                                    }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
                                 ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_usuario),
-                                        contentDescription = "Contactar",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
                                     Text("Contactar")
                                 }
                             } else {
                                 Text("Este es tu anuncio", style = MaterialTheme.typography.bodySmall)
                             }
-                        } else {
-                            Text("Contacto no disponible", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             }
+        }
+    } ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
+    }
+}
 
-            Spacer(Modifier.height(32.dp))
+@Composable
+fun FichaRow(label1: String, value1: String, label2: String, value2: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Column(Modifier.weight(1f)) {
+            Text(label1, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+            Text(value1, style = MaterialTheme.typography.bodyMedium)
         }
-    } ?: run {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label2, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+            Text(value2, style = MaterialTheme.typography.bodyMedium)
         }
+    }
+}
+
+@Composable
+fun etiquetaVisual(valor: String): String {
+    return when {
+        valor.contains("CERO", ignoreCase = true) -> "🟦 CERO"
+        valor.contains("ECO", ignoreCase = true) -> "🟢🟦 ECO"
+        valor.contains("C (verde)", ignoreCase = true) -> "🟢 C"
+        valor.contains("B", ignoreCase = true) -> "🟡 B"
+        valor.contains("Sin", ignoreCase = true) -> "🚫"
+        else -> valor
     }
 }

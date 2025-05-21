@@ -179,7 +179,7 @@ fun Navegacion(
             composable("principal") {
                 Busqueda(
                     cars = cars,
-                    onApplyFilters = { marca, modelo, pMin, pMax, provincia, ciudad, añoMin, añoMax, kmMin, kmMax, combustible, color ->
+                    onApplyFilters = { marca, modelo, pMin, pMax, provincia, ciudad, añoMin, añoMax, kmMin, kmMax, combustible, color, automatico, puertas, cilindrada ->
                         carVM.applyFilters(
                             marca = marca,
                             modelo = modelo,
@@ -192,7 +192,10 @@ fun Navegacion(
                             kmMin = kmMin.toIntOrNull(),
                             kmMax = kmMax.toIntOrNull(),
                             combustible = combustible,
-                            color = color
+                            color = color,
+                            automatico = automatico,
+                            puertas = puertas.toIntOrNull(),
+                            cilindrada = cilindrada.toIntOrNull()
                         )
                     }
                 ) { id ->

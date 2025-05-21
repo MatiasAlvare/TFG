@@ -83,47 +83,45 @@ class ChatViewModel : ViewModel() {
 
     // 🔄 Escucha global de mensajes no leídos
     private fun observeUnreadMessagesSimplified(userId: String) {
-        db.collectionGroup("messages")
-            .whereNotEqualTo("senderId", userId)
-            .whereEqualTo("seen", false)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    println("❌ Error escuchando mensajes globales: ${e.localizedMessage}")
+        db.collection("chats")
+            .whereArrayContains("participants", userId)
+            .addSnapshotListener { chatsSnapshot, chatError ->
+                if (chatError != null) {
+                    println("❌ Error al escuchar chats del usuario: ${chatError.localizedMessage}")
                     return@addSnapshotListener
                 }
 
+                val userChats = chatsSnapshot?.documents ?: return@addSnapshotListener
+
                 val unreadCountsMap = mutableMapOf<String, MessageCount>()
-                snapshot?.documents?.forEach { doc ->
-                    val chatRef = doc.reference.parent.parent
-                    val chatId = chatRef?.id
-                    val senderId = doc.getString("senderId") ?: "desconocido"
-                    val seen = doc.getBoolean("seen") ?: false
 
-                    println("📥 Mensaje detectado en $chatId ➜ senderId: $senderId | seen: $seen")
+                userChats.forEach { chatDoc ->
+                    val chatId = chatDoc.id
+                    val messagesRef = chatDoc.reference.collection("messages")
+                        .whereEqualTo("seen", false)
+                        .whereNotEqualTo("senderId", userId)
 
-                    if (seen) {
-                        println("⚠️ ERROR: mensaje ya llegó como SEEN en $chatId")
-
-                        // ✅ Mostrar alerta visual si llega mal
-                        appContext?.let {
-                            Toast.makeText(
-                                it,
-                                "⚠️ Mensaje recibido como visto en $chatId",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                    messagesRef.addSnapshotListener { messagesSnapshot, msgError ->
+                        if (msgError != null) {
+                            println("❌ Error escuchando mensajes no leídos en $chatId: ${msgError.localizedMessage}")
+                            return@addSnapshotListener
                         }
-                    }
 
-                    if (chatId != null && !seen) {
-                        unreadCountsMap[chatId] = unreadCountsMap.getOrDefault(chatId, MessageCount(0))
-                            .let { current -> MessageCount(current.count + 1) }
+                        val count = messagesSnapshot?.documents?.size ?: 0
+                        if (count > 0) {
+                            unreadCountsMap[chatId] = MessageCount(count)
+                        } else {
+                            unreadCountsMap.remove(chatId)
+                        }
+
+                        _globalUnreadCounts.value = unreadCountsMap
+                        _unreadCount.value = unreadCountsMap.values.sumOf { it.count }
                     }
                 }
-
-                _globalUnreadCounts.value = unreadCountsMap
-                _unreadCount.value = unreadCountsMap.values.sumOf { it.count }
             }
     }
+
+
 
     fun loadMessages(chatId: String) {
         db.collection("chats").document(chatId).collection("messages")
@@ -145,10 +143,12 @@ class ChatViewModel : ViewModel() {
 
         val messageMap = hashMapOf(
             "senderId" to userId,
+            "receiverId" to receiverId, // ✅ Necesario para el filtro de arriba
             "text" to text,
             "timestamp" to System.currentTimeMillis(),
             "seen" to false
         )
+
 
         val chatRef = db.collection("chats").document(chatId)
         val msgRef = chatRef.collection("messages").document()

@@ -9,12 +9,15 @@ package com.example.tfg_matias.Model
  * @param photoUrl  URL de foto de perfil
  * @param rating    Valoración promedio
  */
+
 data class Usuario(
     val id: String = "",
     val email: String = "",
     val name: String = "",
     val photoUrl: String = "",
     val valoracion: Double = 0.0,
-    val comentarios: List<String> = emptyList(),
-    val city: String = ""  // 👈 AÑADIDO AQUÍ
+    val comentarios: List<Comentario> = emptyList(),
+    val city: String = ""
 )
+
+

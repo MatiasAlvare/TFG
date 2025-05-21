@@ -1,21 +1,28 @@
 package com.example.tfg_matias.pantallas
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -34,6 +41,8 @@ fun ChatList(
     val cars by carVM.cars.collectAsState()
     val unreadCounts by chatVM.globalUnreadCounts.collectAsState()
 
+    var chatIdToDelete by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
         chatVM.loadChats()
         carVM.loadCars()
@@ -41,7 +50,7 @@ fun ChatList(
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // ✅ Título fijo arriba
+        // Título
         Text(
             text = "Mis mensajes",
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -53,7 +62,24 @@ fun ChatList(
 
         if (chats.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No tienes conversaciones activas.")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_carflow),
+                        contentDescription = "Logo CarFlow",
+                        modifier = Modifier
+                            .size(70.dp)
+                            .clip(CircleShape)
+                            .clickable { navController.navigate("principal") }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "No tienes conversaciones activas",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         } else {
             LazyColumn(
@@ -64,6 +90,14 @@ fun ChatList(
                     val lastMessage = chat.lastMessage
                     val unreadCount = unreadCounts[chat.chatId]?.count ?: 0
                     val hasUnread = unreadCount > 0
+
+                    val backgroundColor by animateColorAsState(
+                        targetValue = if (hasUnread)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        else
+                            Color(0xFFF5F5F5),
+                        label = "chatBackgroundColor"
+                    )
 
                     Card(
                         modifier = Modifier
@@ -78,25 +112,18 @@ fun ChatList(
                                     navController.navigate("chat/${chat.chatId}/${chat.cocheId}/$sellerId")
                                 }
                             }
-                            .then(
-                                if (hasUnread)
-                                    Modifier.border(
-                                        BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
-                                        shape = RoundedCornerShape(16.dp)
-                                    )
-                                else Modifier
+                            .border(
+                                width = 2.dp,
+                                color = if (hasUnread) MaterialTheme.colorScheme.primary else Color(0xFFE0E0E0),
+                                shape = RoundedCornerShape(16.dp)
                             ),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = backgroundColor)
                     ) {
                         Row(
-                            Modifier
-                                .background(
-                                    if (hasUnread)
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                    else
-                                        MaterialTheme.colorScheme.surface
-                                )
-                                .padding(16.dp),
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             AsyncImage(
@@ -109,10 +136,9 @@ fun ChatList(
                             Spacer(Modifier.width(12.dp))
 
                             Column(Modifier.weight(1f)) {
-                                Text(
-                                    coche?.let { "${it.marca} ${it.modelo}" } ?: "Coche eliminado",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+                                coche?.let {
+                                    Text("${it.marca} ${it.modelo}", style = MaterialTheme.typography.titleMedium)
+                                }
                                 if (lastMessage.isNotEmpty()) {
                                     Spacer(Modifier.height(4.dp))
                                     Text(lastMessage, style = MaterialTheme.typography.bodySmall)
@@ -126,11 +152,13 @@ fun ChatList(
                                 }
                             }
 
+                            Spacer(Modifier.width(8.dp))
+
                             IconButton(onClick = {
-                                chatVM.deleteChat(chat.chatId)
+                                chatIdToDelete = chat.chatId
                             }) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_eliminar),
+                                    imageVector = Icons.Default.Delete,
                                     contentDescription = "Eliminar chat"
                                 )
                             }
@@ -138,6 +166,44 @@ fun ChatList(
                     }
                 }
             }
+        }
+
+        // Diálogo de confirmación de borrado
+        chatIdToDelete?.let { chatId ->
+            AlertDialog(
+                onDismissRequest = { chatIdToDelete = null },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color.Red,
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                title = { Text("¿Seguro que quieres borrar el chat?") },
+                text = {
+                    Text("Esta acción eliminará la conversación de forma permanente de tu bandeja. No podrás recuperarla.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            chatVM.deleteChat(chatId)
+                            chatIdToDelete = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
+                    ) {
+                        Text("Sí")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = { chatIdToDelete = null },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+                    ) {
+                        Text("No")
+                    }
+                }
+            )
         }
     }
 }
