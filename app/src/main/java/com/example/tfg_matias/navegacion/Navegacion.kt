@@ -33,8 +33,7 @@ fun Navegacion(
     initialChatId: String? = null,
     initialCocheId: String? = null,
     initialSellerId: String? = null
-)
- {
+) {
     val navController = rememberNavController()
     val cars by carVM.filteredCars.collectAsState()
     val currentEntry by navController.currentBackStackEntryAsState()
@@ -49,56 +48,38 @@ fun Navegacion(
 
     chatVM.setContext(context)
 
-    // ✅ Si hay datos de notificación, navegamos directamente al chat al arrancar
-     LaunchedEffect(initialChatId, initialCocheId, initialSellerId) {
-         if (
-             !initialChatId.isNullOrBlank() &&
-             !initialCocheId.isNullOrBlank() &&
-             !initialSellerId.isNullOrBlank()
-         ) {
-             navController.navigate("chat/$initialChatId/$initialCocheId/$initialSellerId") {
-                 launchSingleTop = true
-             }
-         }
-     }
+    LaunchedEffect(initialChatId, initialCocheId, initialSellerId) {
+        if (!initialChatId.isNullOrBlank() && !initialCocheId.isNullOrBlank() && !initialSellerId.isNullOrBlank()) {
+            navController.navigate("chat/$initialChatId/$initialCocheId/$initialSellerId") {
+                launchSingleTop = true
+            }
+        }
+    }
 
-
-     // ✅ Snackbar con vibración y sonido al recibir mensajes nuevos
     LaunchedEffect(unreadCount) {
         if (unreadCount > previousUnreadCount.value) {
-            val mensaje = if (unreadCount == 1)
-                "📩 Tienes un mensaje nuevo"
-            else
-                "📬 Tienes $unreadCount mensajes nuevos"
-
+            val mensaje = if (unreadCount == 1) "📩 Tienes un mensaje nuevo" else "📬 Tienes $unreadCount mensajes nuevos"
             val result = snackbarHostState.showSnackbar(
                 message = mensaje,
                 actionLabel = "Ver",
                 duration = SnackbarDuration.Short
             )
-
             if (result == SnackbarResult.ActionPerformed && navController.currentDestination?.route != "chats") {
                 navController.navigate("chats") {
                     launchSingleTop = true
                 }
             }
-
             val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (unreadCount == 1) {
-                    vibrator.vibrate(
-                        VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE)
-                    )
+                    vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
                 } else {
                     val pattern = longArrayOf(0, 150, 100, 150)
-                    vibrator.vibrate(
-                        VibrationEffect.createWaveform(pattern, -1)
-                    )
+                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
                 }
             } else {
-                vibrator.vibrate(300) // compatibilidad con Android < 8.0
+                vibrator.vibrate(300)
             }
-
             val notificationUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val ringtone = RingtoneManager.getRingtone(context, notificationUri)
             ringtone.play()
@@ -114,10 +95,7 @@ fun Navegacion(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            if (
-                currentRoute == "principal" ||
-                (user != null && currentRoute !in listOf("login", "register", "forgot_password", "reset_confirmation"))
-            ) {
+            if (currentRoute == "principal" || (user != null && currentRoute !in listOf("login", "register", "forgot_password", "reset_confirmation"))) {
                 BarraInferior(navController, chatVM)
             }
         }
@@ -125,9 +103,7 @@ fun Navegacion(
         NavHost(
             navController = navController,
             startDestination = if (user != null) "principal" else "login",
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
+            modifier = Modifier.padding(innerPadding).fillMaxSize()
         ) {
             composable("login") {
                 LoginScreen(
@@ -146,7 +122,6 @@ fun Navegacion(
                     }
                 )
             }
-
             composable("register") {
                 Registrarse(
                     onGoogleSignIn = {},
@@ -163,46 +138,15 @@ fun Navegacion(
                     }
                 )
             }
-
-            composable("forgot_password") {
-                OlvidoContraseña(navController)
-            }
-
+            composable("forgot_password") { OlvidoContraseña(navController) }
             composable("reset_confirmation") {
-                EnlaceEnviado {
-                    navController.navigate("login") {
-                        popUpTo("login") { inclusive = true }
-                    }
-                }
+                EnlaceEnviado { navController.navigate("login") { popUpTo("login") { inclusive = true } } }
             }
-
             composable("principal") {
-                Busqueda(
-                    cars = cars,
-                    onApplyFilters = { marca, modelo, pMin, pMax, provincia, ciudad, añoMin, añoMax, kmMin, kmMax, combustible, color, automatico, puertas, cilindrada ->
-                        carVM.applyFilters(
-                            marca = marca,
-                            modelo = modelo,
-                            precioMin = pMin.toDoubleOrNull(),
-                            precioMax = pMax.toDoubleOrNull(),
-                            provincia = provincia,
-                            ciudad = ciudad,
-                            añoMin = añoMin.toIntOrNull(),
-                            añoMax = añoMax.toIntOrNull(),
-                            kmMin = kmMin.toIntOrNull(),
-                            kmMax = kmMax.toIntOrNull(),
-                            combustible = combustible,
-                            color = color,
-                            automatico = automatico,
-                            puertas = puertas.toIntOrNull(),
-                            cilindrada = cilindrada.toIntOrNull()
-                        )
-                    }
-                ) { id ->
-                    navController.navigate("detail/$id")
-                }
+                Busqueda(cars = cars, onApplyFilters = { marca, modelo, pMin, pMax, provincia, ciudad, añoMin, añoMax, kmMin, kmMax, combustible, color, automatico, puertas, cilindrada ->
+                    carVM.applyFilters(marca, modelo, pMin.toDoubleOrNull(), pMax.toDoubleOrNull(), provincia, ciudad, añoMin.toIntOrNull(), añoMax.toIntOrNull(), kmMin.toIntOrNull(), kmMax.toIntOrNull(), combustible, color, automatico, puertas.toIntOrNull(), cilindrada.toIntOrNull())
+                }) { id -> navController.navigate("detail/$id") }
             }
-
             composable("vender") {
                 RequireAuth(navController) {
                     Vender(onSubmit = { coche, uris ->
@@ -213,76 +157,58 @@ fun Navegacion(
                     })
                 }
             }
-
-            composable(
-                "detail/{carId}",
-                arguments = listOf(navArgument("carId") { type = NavType.StringType })
-            ) { back ->
+            composable("detail/{carId}", arguments = listOf(navArgument("carId") { type = NavType.StringType })) { back ->
                 RequireAuth(navController) {
                     val carId = back.arguments!!.getString("carId")!!
                     Detalle(
                         carId = carId,
                         onBack = { navController.popBackStack() },
                         onViewSeller = { uid -> navController.navigate("perfil/$uid") },
-                        onContact = { chatId, cocheId, sellerId ->
-                            navController.navigate("chat/$chatId/$cocheId/$sellerId")
-                        }
+                        onContact = { chatId, cocheId, sellerId -> navController.navigate("chat/$chatId/$cocheId/$sellerId") }
                     )
                 }
             }
-
             composable("chats") {
                 RequireAuth(navController) {
                     ChatList(navController = navController, chatVM = chatVM)
                 }
             }
-
             composable("perfil/me") {
                 RequireAuth(navController) {
-                    val uid = FirebaseAuth.getInstance().currentUser!!.uid
+                    val userId = FirebaseAuth.getInstance().currentUser!!.uid
                     Perfil(
-                        userId = uid,
-                        onCarClick = { cid -> navController.navigate("detail/$cid") },
-                        onLogout = {
-                            navController.navigate("login") {
-                                popUpTo("principal") { inclusive = true }
-                            }
-                        }
+                        userId = userId,
+                        onCarClick = { id -> navController.navigate("detail/$id") },  // ✅ CORREGIDO: permite rutas como editar_coche
+                        onLogout = { navController.navigate("login") },
+                        onUserClick = { uid -> navController.navigate("perfil/$uid") }
                     )
                 }
             }
-
-            composable(
-                "perfil/{userId}",
-                arguments = listOf(navArgument("userId") { type = NavType.StringType })
-            ) { back ->
+            composable("perfil/{userId}", arguments = listOf(navArgument("userId") { type = NavType.StringType })) { back ->
                 RequireAuth(navController) {
-                    val uid = back.arguments!!.getString("userId")!!
+                    val userId = back.arguments!!.getString("userId")!!
                     Perfil(
-                        userId = uid,
-                        onCarClick = { cid -> navController.navigate("detail/$cid") },
-                        onLogout = {
-                            navController.navigate("login") {
-                                popUpTo("principal") { inclusive = true }
-                            }
-                        }
+                        userId = userId,
+                        onCarClick = { id -> navController.navigate("detail/$id") },
+                                onLogout = { navController.navigate("login") },
+                        onUserClick = { uid -> navController.navigate("perfil/$uid") }
                     )
                 }
             }
+            composable("editar_coche/{id}") { backStackEntry ->
+                val cocheId = backStackEntry.arguments?.getString("id") ?: return@composable
+                EditarCoche(carId = cocheId, navController = navController)
+            }
 
-            composable(
-                "chat/{chatId}/{cocheId}/{sellerId}",
-                arguments = listOf(
-                    navArgument("chatId") { type = NavType.StringType },
-                    navArgument("cocheId") { type = NavType.StringType },
-                    navArgument("sellerId") { type = NavType.StringType }
-                )
-            ) { backStack ->
+            composable("chat/{chatId}/{cocheId}/{sellerId}", arguments = listOf(
+                navArgument("chatId") { type = NavType.StringType },
+                navArgument("cocheId") { type = NavType.StringType },
+                navArgument("sellerId") { type = NavType.StringType }
+            )) { backStack ->
                 RequireAuth(navController) {
                     val chatId = backStack.arguments!!.getString("chatId")!!
                     val cocheId = backStack.arguments!!.getString("cocheId")!!
                     val sellerId = backStack.arguments!!.getString("sellerId")!!
-
                     ChatPantalla(
                         chatId = chatId,
                         cocheId = cocheId,

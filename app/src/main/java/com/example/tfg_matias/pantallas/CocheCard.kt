@@ -66,7 +66,7 @@ fun CocheCard(
 
                 // Kilómetros, año y CV en gris oscuro
                 Text(
-                    "${coche.año} · ${coche.kilometros} km · ${coche.potenciaCv} CV",
+                    "${coche.año} · ${coche.kilometros} km · ${coche.potencia} CV",
                     color = Color(0xFF5A5A5A), // Gris oscuro
                     style = MaterialTheme.typography.bodyMedium
                 )

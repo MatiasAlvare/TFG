@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -97,7 +98,13 @@ fun ChatPantalla(
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text(user.name, fontWeight = FontWeight.Bold)
-                        Text("★ ${user.valoracion} (${user.comentarios.size})")
+
+                        val mediaValoracion = user.comentarios
+                            .map { it.valoracion }
+                            .filter { it > 0 }
+                            .average()
+
+                        Text("★ ${"%.1f".format(mediaValoracion)} (${user.comentarios.size})")
                     }
                 }
             }
@@ -132,6 +139,8 @@ fun ChatPantalla(
         ) {
             items(messages.reversed()) { msg ->
                 val isMe = msg.senderId == currentUserId
+                val isLastMine = msg == messages.lastOrNull { it.senderId == currentUserId }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -150,20 +159,25 @@ fun ChatPantalla(
                         }
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                                containerColor = Color.LightGray
                             )
                         ) {
                             Text(
                                 msg.text,
                                 modifier = Modifier.padding(8.dp),
-                                color = if (isMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                color = Color.Black
                             )
                         }
+
                         Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "Enviado",
-                            style = MaterialTheme.typography.labelSmall
-                        )
+
+                        if (isMe && isLastMine) {
+                            Text(
+                                text = if (msg.visto) "Visto" else "Enviado",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Gray
+                            )
+                        }
                     }
                 }
             }

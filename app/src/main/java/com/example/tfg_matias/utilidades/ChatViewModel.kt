@@ -30,7 +30,7 @@ data class Message(
     val senderId: String = "",
     val text: String = "",
     val timestamp: Long = System.currentTimeMillis(),
-    val seen: Boolean = false
+    val visto: Boolean = false
 )
 
 data class MessageCount(val count: Int)
@@ -143,10 +143,10 @@ class ChatViewModel : ViewModel() {
 
         val messageMap = hashMapOf(
             "senderId" to userId,
-            "receiverId" to receiverId, // ✅ Necesario para el filtro de arriba
+            "receiverId" to receiverId,
             "text" to text,
             "timestamp" to System.currentTimeMillis(),
-            "seen" to false
+            "visto" to false // ✅ Campo corregido
         )
 
 
@@ -195,27 +195,30 @@ class ChatViewModel : ViewModel() {
 
 
 
+
     fun markMessagesAsSeen(chatId: String) {
-        val userId = auth.currentUser?.uid ?: return
-        db.collection("chats").document(chatId).collection("messages")
-            .whereNotEqualTo("senderId", userId)
-            .whereEqualTo("seen", false)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (!snapshot.isEmpty) {
-                    val batch = db.batch()
-                    for (doc in snapshot.documents) {
-                        batch.update(doc.reference, "seen", true)
-                    }
-                    batch.commit().addOnSuccessListener {
-                        println("✅ Mensajes marcados como leídos en $chatId")
-                    }
+        val currentUser = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val db = FirebaseFirestore.getInstance()
+
+        viewModelScope.launch {
+            try {
+                val mensajesSnapshot = db.collection("chats")
+                    .document(chatId)
+                    .collection("mensajes")
+                    .whereEqualTo("to", currentUser)
+                    .whereEqualTo("visto", false)
+                    .get()
+                    .await()
+
+                for (doc in mensajesSnapshot.documents) {
+                    doc.reference.update("visto", true)
                 }
+            } catch (e: Exception) {
+                println("❌ Error marcando mensajes como vistos: ${e.localizedMessage}")
             }
-            .addOnFailureListener {
-                println("❌ Error al marcar como leídos: ${it.localizedMessage}")
-            }
+        }
     }
+
 
     fun deleteChat(chatId: String) {
         db.collection("chats").document(chatId)

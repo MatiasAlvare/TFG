@@ -44,7 +44,7 @@ fun formatFecha(timestamp: com.google.firebase.Timestamp): String {
     return sdf.format(timestamp.toDate())
 }
 @Composable
-fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit) {
+fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, onUserClick: (String) -> Unit) {
     val vm: CarViewModel = viewModel()
     val user by vm.selectedProfile.collectAsState()
     val cars by vm.cars.collectAsState()
@@ -60,7 +60,6 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit) {
     var comentarioEditando by remember { mutableStateOf<Comentario?>(null) }
 
     val isCurrentUser = FirebaseAuth.getInstance().currentUser?.uid == userId
-
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@rememberLauncherForActivityResult
         val db = FirebaseFirestore.getInstance()
@@ -72,6 +71,12 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit) {
                     storageRef.putFile(uri).await()
                     val url = storageRef.downloadUrl.await().toString()
                     db.collection("users").document(uid).update("photoUrl", url).await()
+                    val authUser = FirebaseAuth.getInstance().currentUser
+                    authUser?.updateProfile(
+                        com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                            .setPhotoUri(Uri.parse(url))
+                            .build()
+                    )?.await()
                     CoroutineScope(Dispatchers.Main).launch {
                         Toast.makeText(context, "Foto actualizada", Toast.LENGTH_SHORT).show()
                         vm.getUserProfile(uid)
@@ -231,11 +236,14 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit) {
 
             Text("Comentarios:", style = MaterialTheme.typography.titleMedium)
             usuario.comentarios.forEach { com ->
-                val currentUid = FirebaseAuth.getInstance().currentUser?.uid
-                remember(vm.allUsers, com.authorId) {
-                    vm.getUserNameById(com.authorId)
+                val autorUsuario = remember(vm.allUsers, com.authorId) {
+                    vm.allUsers.find { it.id == com.authorId }
                 }
-                com.timestamp?.let { formatFecha(it) } ?: "Sin fecha"
+                val autor = autorUsuario?.name ?: "Anónimo"
+                val fotoAutor = autorUsuario?.photoUrl ?: ""
+                val fecha = com.timestamp?.let { formatFecha(it) } ?: "Sin fecha"
+                val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -245,122 +253,153 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit) {
                     colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
                     Column(Modifier.padding(12.dp)) {
+
+                        // Autor + fecha
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable {
+                                autorUsuario?.let {
+                                    onUserClick(it.id)
+                                }
+                            }
+                        ) {
+                            if (fotoAutor.isNotBlank()) {
+                                AsyncImage(
+                                    model = fotoAutor,
+                                    contentDescription = "Foto autor",
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_usuario),
+                                    contentDescription = "Sin foto",
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "$autor – $fecha",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+
+                        Spacer(Modifier.height(8.dp))
                         Text("★ ${com.valoracion}", fontWeight = FontWeight.Bold)
                         Text(com.text)
 
-                        val autor = remember(vm.allUsers, com.authorId) {
-                            vm.getUserNameById(com.authorId)
-                        }
-                        val fecha = com.timestamp?.let { formatFecha(it) } ?: "Sin fecha"
-
-                        Spacer(Modifier.height(4.dp))
-                        Text("Por $autor – $fecha", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-
-                        if (isCurrentUser || com.authorId == FirebaseAuth.getInstance().currentUser?.uid) {
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                if (com.authorId == currentUid) {
-                                    TextButton(onClick = {
-                                        comentario = com.text
-                                        valoracion = com.valoracion.toFloat()
-                                        comentarioEditando = com
-                                    }) {
-                                        Text("Editar")
-                                    }
-
-                                    TextButton(onClick = {
-                                        val nuevosComentarios =
-                                            usuario.comentarios.filterNot { it.id == com.id }
-                                        CoroutineScope(Dispatchers.IO).launch {
-                                            FirebaseFirestore.getInstance().collection("users")
-                                                .document(userId)
-                                                .update("comentarios", nuevosComentarios).await()
-                                            CoroutineScope(Dispatchers.Main).launch {
-                                                Toast.makeText(
-                                                    context,
-                                                    "Comentario eliminado",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                                vm.getUserProfile(userId)
-                                            }
-                                        }
-                                    }) {
-                                        Text("Eliminar")
-                                    }
+                        // Botones
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            if (com.authorId == currentUid) {
+                                TextButton(onClick = {
+                                    comentario = com.text
+                                    valoracion = com.valoracion.toFloat()
+                                    comentarioEditando = com
+                                }) {
+                                    Text("Editar")
                                 }
 
-                                if (isCurrentUser && com.authorId != currentUid) {
-                                    var showDeleteConfirm by remember { mutableStateOf(false) }
-
-                                    TextButton(onClick = { showDeleteConfirm = true }) {
-                                        Text("Eliminar")
+                                TextButton(onClick = {
+                                    val nuevosComentarios =
+                                        usuario.comentarios.filterNot { it.id == com.id }
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        FirebaseFirestore.getInstance().collection("users")
+                                            .document(userId)
+                                            .update("comentarios", nuevosComentarios).await()
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            Toast.makeText(
+                                                context,
+                                                "Comentario eliminado",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            vm.getUserProfile(userId)
+                                        }
                                     }
+                                }, colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // 🔴 botón rojo
+                                ) {
+                                    Text("Eliminar")
+                                }
+                            } else if (isCurrentUser) {
+                                var showDeleteConfirm by remember { mutableStateOf(false) }
+                                TextButton(onClick = { showDeleteConfirm = true },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // 🔴 botón rojo
+                                    ) {
 
-                                    if (showDeleteConfirm) {
-                                        AlertDialog(
-                                            onDismissRequest = { showDeleteConfirm = false },
-                                            title = { Text("¿Eliminar comentario?") },
-                                            text = { Text("¿Estás seguro de que deseas eliminar este comentario? Se reducirá la valoración media y el comentario desaparecerá.") },
-                                            confirmButton = {
-                                                TextButton(onClick = {
-                                                    showDeleteConfirm = false
-                                                    CoroutineScope(Dispatchers.IO).launch {
-                                                        val nuevosComentarios =
-                                                            usuario.comentarios.filterNot { it.id == com.id }
-                                                        FirebaseFirestore.getInstance()
-                                                            .collection("users")
-                                                            .document(userId).update(
-                                                                "comentarios",
-                                                                nuevosComentarios
-                                                            ).await()
-                                                        CoroutineScope(Dispatchers.Main).launch {
-                                                            Toast.makeText(
-                                                                context,
-                                                                "Comentario eliminado",
-                                                                Toast.LENGTH_SHORT
-                                                            ).show()
-                                                            vm.getUserProfile(userId)
-                                                        }
+                                    Text("Eliminar")
+                                }
+                                if (showDeleteConfirm) {
+                                    AlertDialog(
+                                        onDismissRequest = { showDeleteConfirm = false },
+                                        title = { Text("¿Eliminar comentario?") },
+                                        text = { Text("¿Estás seguro de que deseas eliminar este comentario? Se reducirá la valoración media y el comentario desaparecerá.") },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                showDeleteConfirm = false
+                                                CoroutineScope(Dispatchers.IO).launch {
+                                                    val nuevosComentarios =
+                                                        usuario.comentarios.filterNot { it.id == com.id }
+                                                    FirebaseFirestore.getInstance()
+                                                        .collection("users")
+                                                        .document(userId)
+                                                        .update("comentarios", nuevosComentarios)
+                                                        .await()
+                                                    CoroutineScope(Dispatchers.Main).launch {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Comentario eliminado",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                        vm.getUserProfile(userId)
                                                     }
-                                                }) {
-                                                    Text(
-                                                        "Eliminar",
-                                                        color = MaterialTheme.colorScheme.error
-                                                    )
                                                 }
-                                            },
-                                            dismissButton = {
-                                                TextButton(onClick = {
-                                                    showDeleteConfirm = false
-                                                }) {
-                                                    Text("Cancelar")
-                                                }
+                                            }) {
+                                                Text(
+                                                    "Eliminar",
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
                                             }
-                                        )
-                                    }
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showDeleteConfirm = false }) {
+                                                Text("Cancelar")
+                                            }
+                                        }
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
-                    if (!isCurrentUser) {
-                Divider()
+
+                if (!isCurrentUser) {
+                    HorizontalDivider()
                 Text(if (comentarioEditando != null) "Editar comentario:" else "Deja una valoración y comentario:", style = MaterialTheme.typography.titleMedium)
                 Slider(value = valoracion, onValueChange = { valoracion = it }, valueRange = 0f..5f, steps = 4)
                 Text("Valoración: ${valoracion.toInt()} estrellas")
                 OutlinedTextField(value = comentario, onValueChange = { comentario = it }, label = { Text("Comentario") }, modifier = Modifier.fillMaxWidth())
                 Button(onClick = {
                     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
+                    val userFirebase = FirebaseAuth.getInstance().currentUser
                     val nuevoComentario = Comentario(
                         id = comentarioEditando?.id ?: UUID.randomUUID().toString(),
                         authorId = uid,
+                        name = userFirebase?.displayName ?: "Anónimo",
+                        email = userFirebase?.email ?: "",
+                        photoUrl = userFirebase?.photoUrl?.toString() ?: "",
                         text = comentario,
                         valoracion = valoracion,
                         timestamp = Timestamp.now()
                     )
+
+
                     CoroutineScope(Dispatchers.IO).launch {
                         val nuevos = usuario.comentarios.filter { it.authorId != uid || it.id != comentarioEditando?.id } + nuevoComentario
                         FirebaseFirestore.getInstance().collection("users").document(userId).update("comentarios", nuevos).await()
@@ -391,6 +430,16 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit) {
                         Column(Modifier.padding(12.dp)) {
                             CocheCard(coche = coche, onClick = { onCarClick(coche.id) })
                             if (isCurrentUser) {
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        onCarClick("editar_coche/${coche.id}")
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Editar publicación")
+                                }
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = {

@@ -198,11 +198,7 @@ class CarViewModel : ViewModel() {
         }
     }
 
-    fun getUserNameById(userId: String): String {
-        val user = allUsers.find { it.id == userId }
-        Log.d("AutorComentario", "Buscando $userId -> ${user?.name ?: "NO ENCONTRADO"}")
-        return user?.name ?: "Anónimo"
-    }
+
 
     fun loadAllUsers() {
         val db = FirebaseFirestore.getInstance()
@@ -210,15 +206,18 @@ class CarViewModel : ViewModel() {
             try {
                 val snapshot = db.collection("users").get().await()
                 val users = snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(Usuario::class.java)?.copy(id = doc.id)
+                    val user = doc.toObject(Usuario::class.java)?.copy(id = doc.id)
+                    Log.d("UsuariosCargados", "Usuario: ${user?.id} - ${user?.name}")
+                    user
                 }
                 _allUsers.clear()
                 _allUsers.addAll(users)
             } catch (e: Exception) {
-                Log.e("loadAllUsers", "Error cargando usuarios: ${e.localizedMessage}")
+                Log.e("loadAllUsers", "Error cargando usuarios: ${e.message}")
             }
         }
     }
+
 
 
 

@@ -40,8 +40,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun TFG_MATIASTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // ⛔ Desactivamos dinámico
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

@@ -1,11 +1,9 @@
-// ✅ Vender.kt actualizado con botón 'Borrar campos', selector 'Tipo de cambio', y título ajustado
+// ✅ EditarCoche.kt: copia exacta de Vender.kt con datos precargados y edición habilitada
 
-@file:OptIn(
-    ExperimentalMaterial3Api::class
-)
 package com.example.tfg_matias.pantallas
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.GetMultipleContents
 import androidx.compose.foundation.background
@@ -31,44 +29,33 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.tfg_matias.Model.Coche
-import com.google.firebase.auth.FirebaseAuth
+import com.example.tfg_matias.ViewModel.CarViewModel
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.util.*
 
 @Composable
-fun DesplegableCampo(label: String, valor: String, opciones: List<String>, onSelect: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
+fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel = viewModel()) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-        OutlinedTextField(
-            value = valor,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
-        )
 
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            opciones.forEach { opcion ->
-                DropdownMenuItem(text = { Text(opcion) }, onClick = {
-                    onSelect(opcion)
-                    expanded = false
-                })
-            }
-        }
-    }
-}
-
-@Composable
-fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
-
-    val marcas = listOf("Abarth", "Alfa Romeo", "Audi", "BMW", "Chevrolet", "Citroën", "Cupra", "Dacia",
+    // Estados idénticos a Vender.kt
+    val marcas = listOf(
+        "Abarth", "Alfa Romeo", "Audi", "BMW", "Chevrolet", "Citroën", "Cupra", "Dacia",
         "Fiat", "Ford", "Honda", "Hyundai", "Jaguar", "Jeep", "Kia", "Lancia", "Land Rover",
         "Lexus", "Mazda", "Mercedes-Benz", "Mini", "Mitsubishi", "Nissan", "Opel",
         "Peugeot", "Porsche", "Renault", "Seat", "Skoda", "Smart", "SsangYong",
-        "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo")
+        "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo"
+    )
     val años = (1975..Calendar.getInstance().get(Calendar.YEAR)).toList().reversed()
     val combustibles = listOf("Gasolina", "Diésel", "Eléctrico", "Híbrido")
     val provincias = mapOf(
@@ -90,8 +77,8 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
         "Verde", "Amarillo", "Naranja", "Marrón", "Beige"
     )
 
+    var coche by remember { mutableStateOf<Coche?>(null) }
 
-    var showErrorDialog by remember { mutableStateOf(false) }
     var marca by remember { mutableStateOf("") }
     var modelo by remember { mutableStateOf("") }
     var anio by remember { mutableStateOf("") }
@@ -106,51 +93,109 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
     var kilometros by remember { mutableStateOf("") }
     var precio by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
+    var etiqueta by remember { mutableStateOf("") }
     var automatico by remember { mutableStateOf<Boolean?>(null) }
-    var photoUris by remember { mutableStateOf(listOf<Uri>()) }
+
+    var photoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var imageUrls by remember { mutableStateOf<List<String>>(emptyList()) }
     var principalIndex by remember { mutableIntStateOf(0) }
+    var showErrorDialog by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
 
-    val photoPicker = rememberLauncherForActivityResult(GetMultipleContents()) { uris ->
-        photoUris = photoUris + uris
+
+    val picker = rememberLauncherForActivityResult(GetMultipleContents()) { uris ->
+        uris.forEach { uri ->
+            scope.launch {
+                try {
+                    val ref = FirebaseStorage.getInstance().reference
+                        .child("cars/${System.currentTimeMillis()}.jpg")
+                    ref.putFile(uri).await()
+                    val url = ref.downloadUrl.await().toString()
+                    imageUrls = imageUrls + url // <- aquí actualizas la lista visible
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Error al subir imagen", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+
+    // Cargar coche actual
+    LaunchedEffect(carId) {
+        withContext(Dispatchers.IO) {
+            coche = carVM.getCarById(carId)
+        }
+        coche?.let {
+            marca = it.marca
+            modelo = it.modelo
+            anio = it.año
+            provincia = it.provincia
+            ciudad = it.ciudad
+            combustible = it.combustible
+            puertas = it.puertas.toString()
+            plazas = it.plazas.toString()
+            cilindrada = it.cilindrada.toString()
+            potencia = it.potencia.toString()
+            color = it.color
+            kilometros = it.kilometros.toString()
+            precio = it.precio.toString()
+            descripcion = it.descripcion
+            etiqueta = it.etiqueta
+            automatico = it.automatico
+            imageUrls = it.fotos
+        }
+    }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+
         Text(
-            "Publica tu coche en CarFlow",
+            "Editar publicación",
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFEDEDED))
+                .padding(12.dp)
+        ) {
+            Text(
+                "Fotos del coche",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            val sortedUrls = buildList {
+                imageUrls.getOrNull(principalIndex)?.let { add(it) }
+                addAll(imageUrls.filterIndexed { i, _ -> i != principalIndex })
+            }
+            val chunkedUrls = sortedUrls.chunked(2)
 
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFEDEDED)).padding(12.dp)) {
-            Text("Fotos de tu coche", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                val sortedUris = if (photoUris.isNotEmpty()) listOf(photoUris[principalIndex]) + photoUris.filterIndexed { i, _ -> i != principalIndex } else emptyList()
-                sortedUris.chunked(2).forEachIndexed { rowIndex, rowUris ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        rowUris.forEachIndexed { i, uri ->
-                            val index = photoUris.indexOf(uri)
-                            val isPrincipal = index == principalIndex
-                            val number = sortedUris.indexOf(uri) + 1
+            chunkedUrls.forEachIndexed { rowIndex, rowImages ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    rowImages.forEach { url ->
+                        val index = imageUrls.indexOf(url)
+                        val isPrincipal = index == principalIndex
+                        val label = if (url == imageUrls.getOrNull(principalIndex)) "PRINCIPAL" else "${sortedUrls.indexOf(url) + 1}"
+
+                        Box(Modifier.weight(1f)) {
                             Card(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(160.dp),
+                                modifier = Modifier.height(160.dp),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Box(Modifier.fillMaxSize()) {
                                     AsyncImage(
-                                        model = uri,
+                                        model = url,
                                         contentDescription = null,
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .clickable { principalIndex = index }
                                     )
                                     Text(
-                                        if (isPrincipal) "PRINCIPAL" else "$number",
+                                        label,
                                         color = Color.White,
                                         modifier = Modifier
                                             .align(Alignment.TopStart)
@@ -160,22 +205,22 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
                                 }
                             }
 
-                            // Botón de eliminar externo
-                            Box(
+                            IconButton(
+                                onClick = {
+                                    imageUrls =
+                                        imageUrls.toMutableList().also { it.removeAt(index) }
+                                    if (principalIndex >= imageUrls.size) principalIndex = 0
+                                },
                                 modifier = Modifier
-                                    .offset(x = (-12).dp, y = 12.dp) // separa la papelera del borde
-                                    .zIndex(1f) // asegúrate que esté encima
+                                    .offset(x = (-12).dp, y = 12.dp)
+                                    .zIndex(1f)
+                                    .align(Alignment.TopEnd)
                             ) {
                                 Card(
                                     shape = RoundedCornerShape(8.dp),
                                     colors = CardDefaults.cardColors(containerColor = Color.White),
                                     elevation = CardDefaults.cardElevation(4.dp),
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .clickable {
-                                            photoUris = photoUris.toMutableList().also { it.removeAt(index) }
-                                            if (principalIndex >= photoUris.size) principalIndex = 0
-                                        }
+                                    modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
@@ -185,92 +230,83 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
                                     )
                                 }
                             }
-
                         }
-                        if (rowUris.size == 1) Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    if (rowImages.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
-                Card(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(140.dp)
-                        .clickable { photoPicker.launch("image/*") },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "+",
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = Color.Black
-                            )
-                            Text(
-                                "Añadir más",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = Color.Black
-                            )
-                        }
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            Card(
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(140.dp)
+                    .clickable { picker.launch("image/*") },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "+",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Color.Black
+                        )
+                        Text(
+                            "Añadir más",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.Black
+                        )
                     }
                 }
             }
         }
 
         Spacer(Modifier.height(12.dp))
-        DesplegableCampo("Selecciona marca", marca, marcas) { marca = it }
+        DesplegableCampo("Marca", marca, marcas) { marca = it }
         OutlinedTextField(
             value = modelo,
             onValueChange = { modelo = it },
             label = { Text("Modelo") },
             modifier = Modifier.fillMaxWidth()
         )
-        DesplegableCampo("Selecciona año", anio, años.map { it.toString() }) { anio = it }
-        DesplegableCampo("Selecciona provincia", provincia, provincias.keys.sorted()) {
-            provincia = it
-        }
-        if (provincia.isNotBlank()) {
-            DesplegableCampo(
-                "Selecciona ciudad",
-                ciudad,
-                provincias[provincia] ?: emptyList()
-            ) { ciudad = it }
-        }
+        DesplegableCampo("Año", anio, años.map { it.toString() }) { anio = it }
+        DesplegableCampo("Provincia", provincia, provincias.keys.sorted()) { provincia = it }
+        if (provincia.isNotBlank()) DesplegableCampo(
+            "Ciudad",
+            ciudad,
+            provincias[provincia] ?: emptyList()
+        ) { ciudad = it }
         DesplegableCampo("Combustible", combustible, combustibles) { combustible = it }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
         Text("Tipo de cambio", style = MaterialTheme.typography.labelLarge)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Color(0xFFE0E0E0))
                 .padding(4.dp)
         ) {
             Box(
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(50))
+                Modifier.weight(1f).clip(RoundedCornerShape(50))
                     .background(if (automatico == true) Color.Black else Color(0xFFE0E0E0))
                     .clickable { automatico = true }.padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    "Automático",
-                    color = if (automatico == true) Color.White else Color.Black,
-                    style = MaterialTheme.typography.labelLarge
-                )
+                Text("Automático", color = if (automatico == true) Color.White else Color.Black)
             }
             Box(
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(50))
+                Modifier.weight(1f).clip(RoundedCornerShape(50))
                     .background(if (automatico == false) Color.Black else Color(0xFFE0E0E0))
                     .clickable { automatico = false }.padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    "Manual",
-                    color = if (automatico == false) Color.White else Color.Black,
-                    style = MaterialTheme.typography.labelLarge
-                )
+                Text("Manual", color = if (automatico == false) Color.White else Color.Black)
             }
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
 
         val etiquetas = listOf(
             "🟦 Etiqueta CERO",
@@ -279,7 +315,6 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
             "🟡 Etiqueta B",
             "🚫 Sin etiqueta"
         )
-        var etiqueta by remember { mutableStateOf("") }
         DesplegableCampo("Etiqueta", etiqueta, etiquetas) { etiqueta = it }
 
         OutlinedTextField(
@@ -310,9 +345,7 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
-
         DesplegableCampo("Color", color, colores) { color = it }
-
         OutlinedTextField(
             value = kilometros,
             onValueChange = { kilometros = it },
@@ -334,24 +367,45 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
+        var showClearDialog by remember { mutableStateOf(false) }
 
         Button(
             onClick = {
-                marca = ""; modelo = ""; anio = ""; provincia = ""; ciudad = ""
-                combustible = ""; puertas = ""; plazas = ""; cilindrada = ""; potencia = ""
-                color = ""; kilometros = ""; precio = ""; descripcion = ""; photoUris = emptyList()
-                principalIndex = 0; automatico = null
+                showClearDialog = true
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Black,
+                containerColor = Color.Red,
                 contentColor = Color.White
             )
         ) {
             Text("Borrar campos")
         }
 
+        if (showClearDialog) {
+            AlertDialog(
+                onDismissRequest = { showClearDialog = false },
+                title = { Text("¿Borrar todos los campos?") },
+                text = { Text("Esta acción eliminará todo lo editado, incluidas las fotos cargadas. ¿Deseas continuar?") },
+                confirmButton = {
+                    Button(onClick = {
+                        marca = ""; modelo = ""; anio = ""; provincia = ""; ciudad = "";
+                        combustible = ""; puertas = ""; plazas = ""; cilindrada = ""; potencia = "";
+                        color = ""; kilometros = ""; precio = ""; descripcion = ""; etiqueta = "";
+                        automatico = null; imageUrls = emptyList(); principalIndex = 0
+                        showClearDialog = false
+                    }) {
+                        Text("Sí, borrar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
         Button(
             onClick = {
                 if (listOf(
@@ -375,73 +429,56 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
                     return@Button
                 }
 
-                val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
-                val coche = Coche(
-                    id = "",
-                    ownerId = uid,
-                    tipo = "Venta",
-                    fotos = listOf(),
-                    marca = marca,
-                    modelo = modelo,
-                    carroceria = "",
-                    combustible = combustible,
-                    año = anio,
-                    automatico = automatico ?: false,
-                    etiqueta = etiqueta,
-                    color = color,
-                    puertas = puertas.toIntOrNull() ?: 0,
-                    plazas = plazas.toIntOrNull() ?: 0,
-                    cilindrada = cilindrada.toIntOrNull() ?: 0,
-                    potencia = potencia.toIntOrNull() ?: 0,
-                    kilometros = kilometros.toIntOrNull() ?: 0,
-                    precio = precio.toDoubleOrNull() ?: 0.0,
-                    descripcion = descripcion,
-                    provincia = provincia,
-                    ciudad = ciudad,
-                    imageUrl = ""
+                val db = FirebaseFirestore.getInstance()
+                val datos = mapOf(
+                    "marca" to marca,
+                    "modelo" to modelo,
+                    "año" to anio,
+                    "provincia" to provincia,
+                    "ciudad" to ciudad,
+                    "combustible" to combustible,
+                    "puertas" to puertas.toIntOrNull(),
+                    "plazas" to plazas.toIntOrNull(),
+                    "cilindrada" to cilindrada.toIntOrNull(),
+                    "potencia" to potencia.toIntOrNull(),
+                    "color" to color,
+                    "kilometros" to kilometros.toIntOrNull(),
+                    "precio" to precio.toDoubleOrNull(),
+                    "descripcion" to descripcion,
+                    "etiqueta" to etiqueta,
+                    "automatico" to automatico,
+                    "fotos" to imageUrls,
+                    "imageUrl" to imageUrls.getOrNull(principalIndex).orEmpty()
                 )
-                onSubmit(coche, photoUris)
-                showDialog = true
+
+                scope.launch {
+                    db.collection("cars").document(carId).update(datos).addOnSuccessListener {
+                        Toast.makeText(context, "✔ Cambios guardados", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
+                    }.addOnFailureListener {
+                        Toast.makeText(context, "❌ Error: ${it.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Red,
+                containerColor = Color.Black,
                 contentColor = Color.White
             )
         ) {
-            Text("Publicar coche")
+            Text("Guardar cambios")
         }
 
-// Dialogo de éxito
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text("¡Coche publicado!") },
-                text = { Text("Tu coche ha sido publicado correctamente.") },
-                confirmButton = {
-
-                    Button(onClick = { showDialog = false }) {
-                        Text("Aceptar")
-                    }
-                }
-            )
-        }
-
-// Dialogo de error si faltan campos
         if (showErrorDialog) {
             AlertDialog(
                 onDismissRequest = { showErrorDialog = false },
                 title = { Text("Error") },
-                text = { Text("Tienes que rellenar todos los campos para poder publicar tu coche") },
+                text = { Text("Tienes que rellenar todos los campos.") },
                 confirmButton = {
-                    Button(
-                        onClick = { showErrorDialog = false },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
-                    ) {
+                    Button(onClick = { showErrorDialog = false }) {
                         Text("Aceptar")
                     }
-                }
-            )
+                })
         }
     }
 }

@@ -80,7 +80,7 @@ fun Detalle(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .background(MaterialTheme.colorScheme.surface)
+                .background(Color.White)
         ) {
             // Imagen principal con botón flotante
             Box {
@@ -150,7 +150,7 @@ fun Detalle(
                                     onClick = { showGallery = false },
                                     modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
                                 ) {
-                                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.Black)
+                                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
                                 }
                             }
                         }
@@ -190,7 +190,7 @@ fun Detalle(
                         FichaRow("Kilómetros", "${c.kilometros} km", "Combustible", c.combustible)
                         FichaRow("Cambio", if (c.automatico) "Automático" else "Manual", "Puertas", "${c.puertas}")
                         FichaRow("Plazas", "${c.plazas}", "Cilindrada", "${c.cilindrada} cc")
-                        FichaRow("Potencia", "${c.potenciaCv} CV", "Etiqueta", etiquetaVisual(c.etiqueta))
+                        FichaRow("Potencia", "${c.potencia} CV", "Etiqueta", etiquetaVisual(c.etiqueta))
                     }
                 }
             }
@@ -250,7 +250,13 @@ fun Detalle(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(vendedor?.name ?: "Usuario no disponible", style = MaterialTheme.typography.titleMedium)
-                        Text(if (vendedor != null) "★ ${vendedor!!.valoracion}" else "Sin valoración", style = MaterialTheme.typography.bodySmall)
+                        val mediaValoracion = vendedor?.comentarios
+                            ?.map { it.valoracion }
+                            ?.filter { it > 0 }
+                            ?.average()
+                            ?: 0.0
+
+                        Text("★ ${"%.1f".format(mediaValoracion)}", style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(8.dp))
                         if (vendedor != null) {
                             Button(

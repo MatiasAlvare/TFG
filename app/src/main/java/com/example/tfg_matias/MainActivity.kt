@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tfg_matias.ViewModel.CarViewModel
 import com.example.tfg_matias.navegacion.Navegacion
+import com.example.tfg_matias.ui.theme.TFG_MATIASTheme
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 
@@ -43,6 +44,15 @@ class MainActivity : ComponentActivity() {
                 initialCocheId = cocheId,
                 initialSellerId = sellerId
             )
+
+            TFG_MATIASTheme{ // 👈 aquí se aplica el tema personalizado
+                Navegacion(
+                    carVM = carVM,
+                    initialChatId = chatId,
+                    initialCocheId = cocheId,
+                    initialSellerId = sellerId
+                )
+            }
         }
     }
 }
