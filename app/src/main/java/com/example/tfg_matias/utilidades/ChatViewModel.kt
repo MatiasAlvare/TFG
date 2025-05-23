@@ -28,10 +28,12 @@ data class Chat(
 
 data class Message(
     val senderId: String = "",
+    val receiverId: String = "",
     val text: String = "",
     val timestamp: Long = System.currentTimeMillis(),
-    val visto: Boolean = false
+    val seen: Boolean = false
 )
+
 
 data class MessageCount(val count: Int)
 
@@ -51,6 +53,7 @@ class ChatViewModel : ViewModel() {
 
     private val _unreadCount = MutableStateFlow(0)
     val unreadCount: StateFlow<Int> = _unreadCount
+
 
     // ✅ Contexto de la app para poder mostrar Toast
     private var appContext: Context? = null
@@ -98,8 +101,9 @@ class ChatViewModel : ViewModel() {
                 userChats.forEach { chatDoc ->
                     val chatId = chatDoc.id
                     val messagesRef = chatDoc.reference.collection("messages")
-                        .whereEqualTo("seen", false)
+                        .whereEqualTo("seen", false) // 🔁 antes decía "seen"
                         .whereNotEqualTo("senderId", userId)
+
 
                     messagesRef.addSnapshotListener { messagesSnapshot, msgError ->
                         if (msgError != null) {
@@ -146,7 +150,8 @@ class ChatViewModel : ViewModel() {
             "receiverId" to receiverId,
             "text" to text,
             "timestamp" to System.currentTimeMillis(),
-            "visto" to false // ✅ Campo corregido
+            "seen" to false // ⚠️ asegúrate de que esto sea "seen", no "visto"
+            // ✅ Campo corregido
         )
 
 
@@ -204,20 +209,24 @@ class ChatViewModel : ViewModel() {
             try {
                 val mensajesSnapshot = db.collection("chats")
                     .document(chatId)
-                    .collection("mensajes")
-                    .whereEqualTo("to", currentUser)
-                    .whereEqualTo("visto", false)
+                    .collection("messages")
+                    .whereNotEqualTo("senderId", currentUser)
+                    .whereEqualTo("seen", false)
                     .get()
                     .await()
 
                 for (doc in mensajesSnapshot.documents) {
-                    doc.reference.update("visto", true)
+                    doc.reference.update("seen", true)
                 }
+
+                println("✅ Mensajes marcados como vistos en $chatId")
+
             } catch (e: Exception) {
                 println("❌ Error marcando mensajes como vistos: ${e.localizedMessage}")
             }
         }
     }
+
 
 
     fun deleteChat(chatId: String) {

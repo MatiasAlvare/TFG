@@ -2,15 +2,13 @@
 
 package com.example.tfg_matias.pantallas
 
-import android.net.Uri
+
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.GetMultipleContents
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -96,11 +94,10 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
     var etiqueta by remember { mutableStateOf("") }
     var automatico by remember { mutableStateOf<Boolean?>(null) }
 
-    var photoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var imageUrls by remember { mutableStateOf<List<String>>(emptyList()) }
     var principalIndex by remember { mutableIntStateOf(0) }
     var showErrorDialog by remember { mutableStateOf(false) }
-    var showDialog by remember { mutableStateOf(false) }
+
 
 
     val picker = rememberLauncherForActivityResult(GetMultipleContents()) { uris ->
@@ -122,29 +119,40 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
 
     // Cargar coche actual
     LaunchedEffect(carId) {
-        withContext(Dispatchers.IO) {
-            coche = carVM.getCarById(carId)
-        }
-        coche?.let {
-            marca = it.marca
-            modelo = it.modelo
-            anio = it.año
-            provincia = it.provincia
-            ciudad = it.ciudad
-            combustible = it.combustible
-            puertas = it.puertas.toString()
-            plazas = it.plazas.toString()
-            cilindrada = it.cilindrada.toString()
-            potencia = it.potencia.toString()
-            color = it.color
-            kilometros = it.kilometros.toString()
-            precio = it.precio.toString()
-            descripcion = it.descripcion
-            etiqueta = it.etiqueta
-            automatico = it.automatico
-            imageUrls = it.fotos
+        try {
+            val car = withContext(Dispatchers.IO) {
+                carVM.getCarById(carId)
+            }
+            if (car == null) {
+                Toast.makeText(context, "❌ No se encontró el coche", Toast.LENGTH_SHORT).show()
+                navController.popBackStack()
+                return@LaunchedEffect
+            }
+            coche = car
+            marca = car.marca
+            modelo = car.modelo
+            anio = car.año
+            provincia = car.provincia
+            ciudad = car.ciudad
+            combustible = car.combustible
+            puertas = car.puertas.toString()
+            plazas = car.plazas.toString()
+            cilindrada = car.cilindrada.toString()
+            potencia = car.potencia?.toString() ?: ""
+            color = car.color
+            kilometros = car.kilometros.toString()
+            precio = car.precio.toString()
+            descripcion = car.descripcion
+            etiqueta = car.etiqueta
+            automatico = car.automatico
+            imageUrls = car.fotos
+        } catch (e: Exception) {
+            Toast.makeText(context, "❌ Error al cargar el coche", Toast.LENGTH_SHORT).show()
+            navController.popBackStack()
         }
     }
+
+
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
 
@@ -467,6 +475,20 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
             )
         ) {
             Text("Guardar cambios")
+        }
+
+
+        // ✅ Botón de cancelar edición
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Gray,
+                contentColor = Color.White
+            )
+        ) {
+            Text("Cancelar edición")
         }
 
         if (showErrorDialog) {

@@ -42,6 +42,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
+
+
 @Composable
 fun Detalle(
     carId: String,
@@ -59,6 +61,9 @@ fun Detalle(
     var vendedor by remember { mutableStateOf<Usuario?>(null) }
     var isOwnCar by remember { mutableStateOf(false) }
     var showProfileImage by remember { mutableStateOf(false) }
+    val isLoggedIn = FirebaseAuth.getInstance().currentUser != null
+    var showLoginPrompt by remember { mutableStateOf(false) }
+
 
 
     var showGallery by remember { mutableStateOf(false) }
@@ -254,13 +259,19 @@ fun Detalle(
                             ?.map { it.valoracion }
                             ?.filter { it > 0 }
                             ?.average()
+                            ?.takeUnless { it.isNaN() }
                             ?: 0.0
 
                         Text("★ ${"%.1f".format(mediaValoracion)}", style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(8.dp))
                         if (vendedor != null) {
                             Button(
-                                onClick = { onViewSeller(vendedor!!.id) },
+                                onClick = { if (isLoggedIn) {
+                                    onViewSeller(vendedor!!.id)
+                                } else {
+                                    showLoginPrompt = true
+                                }
+                                },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
                             ) {
                                 Text("Ver perfil")
@@ -269,13 +280,13 @@ fun Detalle(
                             if (!isOwnCar) {
                                 Button(
                                     onClick = {
-                                        coroutineScope.launch {
-                                            val chatId = chatVM.getOrCreateChat(c.id, c.ownerId)
-                                            if (!c.ownerId.isNullOrEmpty() && !chatId.isNullOrEmpty()) {
+                                        if (isLoggedIn) {
+                                            coroutineScope.launch {
+                                                val chatId = chatVM.getOrCreateChat(c.id, c.ownerId)
                                                 onContact(chatId, c.id, c.ownerId)
-                                            } else {
-                                                Toast.makeText(context, "Error al iniciar el chat", Toast.LENGTH_SHORT).show()
                                             }
+                                        } else {
+                                            showLoginPrompt = true
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
@@ -289,6 +300,29 @@ fun Detalle(
                     }
                 }
             }
+        }
+        if (showLoginPrompt) {
+            AlertDialog(
+                onDismissRequest = { showLoginPrompt = false },
+                title = { Text("Acceso requerido") },
+                text = { Text("Debes registrarte o iniciar sesión para continuar.") },
+                confirmButton = {
+                    Button(onClick = {
+                        showLoginPrompt = false
+                        onBack()  // Opcional: vuelve atrás o usa navController.navigate("register")
+                    }) {
+                        Text("Regístrate")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = {
+                        showLoginPrompt = false
+                        onBack()  // Opcional: vuelve atrás o usa navController.navigate("login")
+                    }) {
+                        Text("Inicia sesión")
+                    }
+                }
+            )
         }
     } ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator()

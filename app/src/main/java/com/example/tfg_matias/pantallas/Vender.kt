@@ -110,6 +110,8 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
     var photoUris by remember { mutableStateOf(listOf<Uri>()) }
     var principalIndex by remember { mutableIntStateOf(0) }
     var showDialog by remember { mutableStateOf(false) }
+    var showClearDialog by remember { mutableStateOf(false) }
+
 
     val photoPicker = rememberLauncherForActivityResult(GetMultipleContents()) { uris ->
         photoUris = photoUris + uris
@@ -337,12 +339,7 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
-            onClick = {
-                marca = ""; modelo = ""; anio = ""; provincia = ""; ciudad = ""
-                combustible = ""; puertas = ""; plazas = ""; cilindrada = ""; potencia = ""
-                color = ""; kilometros = ""; precio = ""; descripcion = ""; photoUris = emptyList()
-                principalIndex = 0; automatico = null
-            },
+            onClick = { showClearDialog = true },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.Black,
@@ -351,6 +348,31 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
         ) {
             Text("Borrar campos")
         }
+
+        if (showClearDialog) {
+            AlertDialog(
+                onDismissRequest = { showClearDialog = false },
+                title = { Text("¿Borrar todos los campos?") },
+                text = { Text("Esta acción eliminará todo lo introducido, incluidas las fotos cargadas. ¿Deseas continuar?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        marca = ""; modelo = ""; anio = ""; provincia = ""; ciudad = ""
+                        combustible = ""; puertas = ""; plazas = ""; cilindrada = ""; potencia = ""
+                        color = ""; kilometros = ""; precio = ""; descripcion = ""; photoUris = emptyList()
+                        principalIndex = 0; automatico = null; etiqueta = ""
+                        showClearDialog = false
+                    }) {
+                        Text("Sí, borrar", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+
 
         Button(
             onClick = {

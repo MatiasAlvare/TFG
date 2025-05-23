@@ -44,7 +44,7 @@ fun formatFecha(timestamp: com.google.firebase.Timestamp): String {
     return sdf.format(timestamp.toDate())
 }
 @Composable
-fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, onUserClick: (String) -> Unit) {
+fun Perfil(userId: String, onCarClick: (String) -> Unit, onCarEdit: (String) -> Unit, onLogout: () -> Unit, onUserClick: (String) -> Unit) {
     val vm: CarViewModel = viewModel()
     val user by vm.selectedProfile.collectAsState()
     val cars by vm.cars.collectAsState()
@@ -58,37 +58,43 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
     var showImageDialog by remember { mutableStateOf(false) }
     var nuevaFotoUri by remember { mutableStateOf<Uri?>(null) }
     var comentarioEditando by remember { mutableStateOf<Comentario?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     val isCurrentUser = FirebaseAuth.getInstance().currentUser?.uid == userId
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@rememberLauncherForActivityResult
-        val db = FirebaseFirestore.getInstance()
-        if (uri != null) {
-            nuevaFotoUri = uri
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val storageRef = FirebaseStorage.getInstance().reference.child("usuarios/$uid.jpg")
-                    storageRef.putFile(uri).await()
-                    val url = storageRef.downloadUrl.await().toString()
-                    db.collection("users").document(uid).update("photoUrl", url).await()
-                    val authUser = FirebaseAuth.getInstance().currentUser
-                    authUser?.updateProfile(
-                        com.google.firebase.auth.UserProfileChangeRequest.Builder()
-                            .setPhotoUri(Uri.parse(url))
-                            .build()
-                    )?.await()
-                    CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(context, "Foto actualizada", Toast.LENGTH_SHORT).show()
-                        vm.getUserProfile(uid)
-                    }
-                } catch (e: Exception) {
-                    CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(context, "Error al subir la foto", Toast.LENGTH_SHORT).show()
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            val uid = FirebaseAuth.getInstance().currentUser?.uid
+                ?: return@rememberLauncherForActivityResult
+            val db = FirebaseFirestore.getInstance()
+            if (uri != null) {
+                nuevaFotoUri = uri
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val storageRef =
+                            FirebaseStorage.getInstance().reference.child("usuarios/$uid.jpg")
+                        storageRef.putFile(uri).await()
+                        val url = storageRef.downloadUrl.await().toString()
+                        db.collection("users").document(uid).update("photoUrl", url).await()
+                        val authUser = FirebaseAuth.getInstance().currentUser
+                        authUser?.updateProfile(
+                            com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                                .setPhotoUri(Uri.parse(url))
+                                .build()
+                        )?.await()
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(context, "Foto actualizada", Toast.LENGTH_SHORT).show()
+                            vm.getUserProfile(uid)
+                        }
+                    } catch (e: Exception) {
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(context, "Error al subir la foto", Toast.LENGTH_SHORT)
+                                .show()
+                        }
                     }
                 }
             }
         }
-    }
 
     LaunchedEffect(userId) {
         vm.getUserProfile(userId)
@@ -182,24 +188,46 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
             if (isCurrentUser) {
                 if (!editando) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                        Button(onClick = { editando = true }, colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) {
+                        Button(
+                            onClick = { editando = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black,
+                                contentColor = Color.White
+                            )
+                        ) {
                             Text("Editar nombre")
                         }
                         Spacer(Modifier.width(8.dp))
-                        Button(onClick = {
-                            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
-                            val db = FirebaseFirestore.getInstance()
-                            val storageRef = FirebaseStorage.getInstance().reference.child("usuarios/$uid.jpg")
-                            CoroutineScope(Dispatchers.IO).launch {
-                                try { storageRef.delete().await() } catch (_: Exception) {}
-                                db.collection("users").document(uid).update("photoUrl", "").await()
-                                CoroutineScope(Dispatchers.Main).launch {
-                                    nuevaFotoUri = null
-                                    Toast.makeText(context, "Foto eliminada", Toast.LENGTH_SHORT).show()
-                                    vm.getUserProfile(uid)
+                        Button(
+                            onClick = {
+                                val uid =
+                                    FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
+                                val db = FirebaseFirestore.getInstance()
+                                val storageRef =
+                                    FirebaseStorage.getInstance().reference.child("usuarios/$uid.jpg")
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    try {
+                                        storageRef.delete().await()
+                                    } catch (_: Exception) {
+                                    }
+                                    db.collection("users").document(uid).update("photoUrl", "")
+                                        .await()
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        nuevaFotoUri = null
+                                        Toast.makeText(
+                                            context,
+                                            "Foto eliminada",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        vm.getUserProfile(uid)
+                                    }
                                 }
-                            }
-                        }, colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) {
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black,
+                                contentColor = Color.White
+                            )
+                        ) {
                             Text("Eliminar foto")
                         }
                     }
@@ -210,36 +238,55 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
                         label = { Text("Nombre") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Button(
                             onClick = {
-                                val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
+                                val uid =
+                                    FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
                                 CoroutineScope(Dispatchers.IO).launch {
                                     FirebaseFirestore.getInstance().collection("users")
                                         .document(uid).update("name", nombreEditado).await()
                                     CoroutineScope(Dispatchers.Main).launch {
                                         editando = false
-                                        Toast.makeText(context, "Nombre actualizado", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            "Nombre actualizado",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                         vm.getUserProfile(uid)
                                     }
                                 }
                             }, modifier = Modifier.weight(1f)
                         ) { Text("Guardar") }
-                        OutlinedButton(onClick = { editando = false }, modifier = Modifier.weight(1f)) { Text("Cancelar") }
+                        OutlinedButton(
+                            onClick = { editando = false },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Cancelar") }
                     }
                 }
             }
 
             val valoracionesValidas = usuario.comentarios.map { it.valoracion }.filter { it > 0 }
-            val mediaValoracion = if (valoracionesValidas.isNotEmpty()) valoracionesValidas.average().toFloat() else 0f
-            Text("Valoración: ★ ${"%.1f".format(mediaValoracion)}", style = MaterialTheme.typography.bodyMedium)
+            val mediaValoracion =
+                valoracionesValidas.average().takeUnless { it.isNaN() }?.toFloat() ?: 0f
+            Text(
+                "Valoración: ★ ${"%.1f".format(mediaValoracion)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
 
             Text("Comentarios:", style = MaterialTheme.typography.titleMedium)
             usuario.comentarios.forEach { com ->
-                val autorUsuario = remember(vm.allUsers, com.authorId) {
-                    vm.allUsers.find { it.id == com.authorId }
+                val autorUsuario = vm.allUsers.find { it.id == com.authorId }
+
+                val autor = when {
+                    autorUsuario != null && autorUsuario.name.isNotBlank() -> autorUsuario.name
+                    autorUsuario != null -> autorUsuario.email
+                    else -> "Cargando..."
                 }
-                val autor = autorUsuario?.name ?: "Anónimo"
+
                 val fotoAutor = autorUsuario?.photoUrl ?: ""
                 val fecha = com.timestamp?.let { formatFecha(it) } ?: "Sin fecha"
                 val currentUid = FirebaseAuth.getInstance().currentUser?.uid
@@ -306,31 +353,34 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
                                     Text("Editar")
                                 }
 
-                                TextButton(onClick = {
-                                    val nuevosComentarios =
-                                        usuario.comentarios.filterNot { it.id == com.id }
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        FirebaseFirestore.getInstance().collection("users")
-                                            .document(userId)
-                                            .update("comentarios", nuevosComentarios).await()
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            Toast.makeText(
-                                                context,
-                                                "Comentario eliminado",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            vm.getUserProfile(userId)
+                                TextButton(
+                                    onClick = {
+                                        val nuevosComentarios =
+                                            usuario.comentarios.filterNot { it.id == com.id }
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            FirebaseFirestore.getInstance().collection("users")
+                                                .document(userId)
+                                                .update("comentarios", nuevosComentarios).await()
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Comentario eliminado",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                vm.getUserProfile(userId)
+                                            }
                                         }
-                                    }
-                                }, colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // 🔴 botón rojo
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // 🔴 botón rojo
                                 ) {
                                     Text("Eliminar")
                                 }
                             } else if (isCurrentUser) {
                                 var showDeleteConfirm by remember { mutableStateOf(false) }
-                                TextButton(onClick = { showDeleteConfirm = true },
+                                TextButton(
+                                    onClick = { showDeleteConfirm = true },
                                     colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // 🔴 botón rojo
-                                    ) {
+                                ) {
 
                                     Text("Eliminar")
                                 }
@@ -379,12 +429,25 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
                 }
             }
 
-                if (!isCurrentUser) {
-                    HorizontalDivider()
-                Text(if (comentarioEditando != null) "Editar comentario:" else "Deja una valoración y comentario:", style = MaterialTheme.typography.titleMedium)
-                Slider(value = valoracion, onValueChange = { valoracion = it }, valueRange = 0f..5f, steps = 4)
+            if (!isCurrentUser) {
+                HorizontalDivider()
+                Text(
+                    if (comentarioEditando != null) "Editar comentario:" else "Deja una valoración y comentario:",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Slider(
+                    value = valoracion,
+                    onValueChange = { valoracion = it },
+                    valueRange = 0f..5f,
+                    steps = 4
+                )
                 Text("Valoración: ${valoracion.toInt()} estrellas")
-                OutlinedTextField(value = comentario, onValueChange = { comentario = it }, label = { Text("Comentario") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = comentario,
+                    onValueChange = { comentario = it },
+                    label = { Text("Comentario") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Button(onClick = {
                     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
                     val userFirebase = FirebaseAuth.getInstance().currentUser
@@ -401,10 +464,13 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
 
 
                     CoroutineScope(Dispatchers.IO).launch {
-                        val nuevos = usuario.comentarios.filter { it.authorId != uid || it.id != comentarioEditando?.id } + nuevoComentario
-                        FirebaseFirestore.getInstance().collection("users").document(userId).update("comentarios", nuevos).await()
+                        val nuevos =
+                            usuario.comentarios.filter { it.authorId != uid || it.id != comentarioEditando?.id } + nuevoComentario
+                        FirebaseFirestore.getInstance().collection("users").document(userId)
+                            .update("comentarios", nuevos).await()
                         CoroutineScope(Dispatchers.Main).launch {
-                            Toast.makeText(context, "Comentario guardado", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Comentario guardado", Toast.LENGTH_SHORT)
+                                .show()
                             comentario = ""
                             valoracion = 0f
                             comentarioEditando = null
@@ -420,7 +486,10 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
             Text("Coches publicados:", style = MaterialTheme.typography.titleMedium)
             val cochesPublicados = cars.filter { it.ownerId == usuario.id }
             if (cochesPublicados.isEmpty()) {
-                Text("Este usuario no ha publicado coches aún.", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Este usuario no ha publicado coches aún.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             } else {
                 cochesPublicados.forEach { coche ->
                     Card(
@@ -433,33 +502,67 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = {
-                                        onCarClick("editar_coche/${coche.id}")
+                                        onCarEdit(coche.id)  // ✅ Esto lleva a EditarCoche
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.Black,
+                                        contentColor = Color.White
+                                    ),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text("Editar publicación")
                                 }
                                 Spacer(Modifier.height(8.dp))
-                                Button(
-                                    onClick = {
-                                        val db = FirebaseFirestore.getInstance()
-                                        db.collection("cars").document(coche.id).delete()
-                                            .addOnSuccessListener {
-                                                Toast.makeText(context, "Publicación eliminada", Toast.LENGTH_SHORT).show()
-                                                db.collection("chats").whereEqualTo("cocheId", coche.id).get()
-                                                    .addOnSuccessListener { snapshot ->
-                                                        for (doc in snapshot.documents) {
-                                                            db.collection("chats").document(doc.id).delete()
-                                                        }
+                                if (showDeleteDialog) {
+                                    AlertDialog(
+                                        onDismissRequest = { showDeleteDialog = false },
+                                        title = { Text("¿Eliminar publicación?") },
+                                        text = { Text("¿Estás seguro de que deseas eliminar esta publicación? Esta acción no se puede deshacer.") },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                showDeleteDialog = false
+                                                val db = FirebaseFirestore.getInstance()
+                                                db.collection("cars").document(coche.id).delete()
+                                                    .addOnSuccessListener {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Publicación eliminada",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                        db.collection("chats")
+                                                            .whereEqualTo("cocheId", coche.id).get()
+                                                            .addOnSuccessListener { snapshot ->
+                                                                for (doc in snapshot.documents) {
+                                                                    db.collection("chats")
+                                                                        .document(doc.id).delete()
+                                                                }
+                                                            }
+                                                        vm.removeCarLocally(coche.id)
                                                     }
-                                                vm.removeCarLocally(coche.id)
+                                            }) {
+                                                Text(
+                                                    "Eliminar",
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
                                             }
-                                    },
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showDeleteDialog = false }) {
+                                                Text("Cancelar")
+                                            }
+                                        }
+                                    )
+                                }
+
+                                Button(
+                                    onClick = { showDeleteDialog = true },
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text("Eliminar publicación", color = MaterialTheme.colorScheme.onError)
+                                    Text(
+                                        "Eliminar publicación",
+                                        color = MaterialTheme.colorScheme.onError
+                                    )
                                 }
                             }
                         }
@@ -471,15 +574,41 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
                 Spacer(Modifier.height(24.dp))
                 HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = {
-                    FirebaseAuth.getInstance().signOut()
-                    Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()
-                    onLogout()
-                }, modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = { showLogoutDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text("Cerrar sesión")
                 }
+
+                if (showLogoutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showLogoutDialog = false },
+                        title = { Text("¿Cerrar sesión?") },
+                        text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showLogoutDialog = false
+                                FirebaseAuth.getInstance().signOut()
+                                Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()
+                                onLogout()
+                            }) {
+                                Text("Sí, cerrar sesión", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showLogoutDialog = false }) {
+                                Text("Cancelar")
+                            }
+                        }
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = { showDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = { showDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text("Eliminar cuenta", color = MaterialTheme.colorScheme.onError)
                 }
             }
@@ -509,28 +638,62 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onLogout: () -> Unit, o
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
                             val uid = authUser?.uid ?: return@launch
-                            val carsSnapshot = db.collection("cars").whereEqualTo("ownerId", uid).get().await()
+
+                            // Eliminar coches
+                            val carsSnapshot =
+                                db.collection("cars").whereEqualTo("ownerId", uid).get().await()
                             for (doc in carsSnapshot.documents) {
                                 db.collection("cars").document(doc.id).delete().await()
                             }
-                            val chatsSnapshot = db.collection("chats").whereArrayContains("participants", uid).get().await()
+
+                            // Eliminar chats
+                            val chatsSnapshot =
+                                db.collection("chats").whereArrayContains("participants", uid).get()
+                                    .await()
                             for (doc in chatsSnapshot.documents) {
                                 db.collection("chats").document(doc.id).delete().await()
                             }
+
+                            // Eliminar comentarios en otros usuarios
+                            val usersSnapshot = db.collection("users").get().await()
+                            for (userDoc in usersSnapshot.documents) {
+                                val comentarios =
+                                    userDoc["comentarios"] as? List<Map<String, Any>> ?: continue
+                                val nuevosComentarios =
+                                    comentarios.filterNot { it["authorId"] == uid }
+                                db.collection("users").document(userDoc.id)
+                                    .update("comentarios", nuevosComentarios).await()
+                            }
+
+                            // Eliminar usuario
                             db.collection("users").document(uid).delete().await()
+
+                            // Eliminar autenticación
                             authUser.delete().addOnCompleteListener { task ->
                                 CoroutineScope(Dispatchers.Main).launch {
                                     if (task.isSuccessful) {
-                                        Toast.makeText(context, "Cuenta eliminada", Toast.LENGTH_LONG).show()
-                                        onLogout()
+                                        Toast.makeText(
+                                            context,
+                                            "Cuenta eliminada",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        onLogout() // Redirige al login
                                     } else {
-                                        Toast.makeText(context, "Error al eliminar cuenta", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(
+                                            context,
+                                            "Error al eliminar cuenta",
+                                            Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 }
                             }
                         } catch (e: Exception) {
                             CoroutineScope(Dispatchers.Main).launch {
-                                Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(
+                                    context,
+                                    "Error: ${e.localizedMessage}",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
                     }

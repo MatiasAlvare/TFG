@@ -45,15 +45,19 @@ fun ChatPantalla(
 
     // Cargar mensajes al entrar
     LaunchedEffect(Unit) {
+        println("👁️ Entrando al chat con ID: $chatId (desde LaunchedEffect(Unit))")
         chatVM.loadMessages(chatId)
         chatVM.markMessagesAsSeen(chatId)
     }
 
 
+
     // Marcar como leídos cuando llegan mensajes
     LaunchedEffect(messages) {
+        println("📩 Mensajes actualizados, marcando como vistos: $chatId")
         chatVM.markMessagesAsSeen(chatId)
     }
+
 
     LaunchedEffect(cocheId) {
         coche = carVM.getCarById(cocheId)
@@ -75,11 +79,12 @@ fun ChatPantalla(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = {
+                println("🔙 Volviendo atrás, marcando como vistos: $chatId")
                 chatVM.markMessagesAsSeen(chatId)
-                onBack()
+                    onBack()
             }) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-            }
+            Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+        }
 
             vendedor?.let { user ->
                 Row(
@@ -103,6 +108,8 @@ fun ChatPantalla(
                             .map { it.valoracion }
                             .filter { it > 0 }
                             .average()
+                            .takeUnless { it.isNaN() }
+                            ?: 0.0
 
                         Text("★ ${"%.1f".format(mediaValoracion)} (${user.comentarios.size})")
                     }
@@ -173,7 +180,7 @@ fun ChatPantalla(
 
                         if (isMe && isLastMine) {
                             Text(
-                                text = if (msg.visto) "Visto" else "Enviado",
+                                text = if (msg.seen) "Visto" else "Enviado",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.Gray
                             )

@@ -69,23 +69,10 @@ fun Navegacion(
                     launchSingleTop = true
                 }
             }
-            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (unreadCount == 1) {
-                    vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
-                } else {
-                    val pattern = longArrayOf(0, 150, 100, 150)
-                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
-                }
-            } else {
-                vibrator.vibrate(300)
-            }
-            val notificationUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            val ringtone = RingtoneManager.getRingtone(context, notificationUri)
-            ringtone.play()
         }
         previousUnreadCount.value = unreadCount
     }
+
 
     LaunchedEffect(Unit) {
         carVM.loadCars()
@@ -143,9 +130,13 @@ fun Navegacion(
                 EnlaceEnviado { navController.navigate("login") { popUpTo("login") { inclusive = true } } }
             }
             composable("principal") {
-                Busqueda(cars = cars, onApplyFilters = { marca, modelo, pMin, pMax, provincia, ciudad, añoMin, añoMax, kmMin, kmMax, combustible, color, automatico, puertas, cilindrada ->
-                    carVM.applyFilters(marca, modelo, pMin.toDoubleOrNull(), pMax.toDoubleOrNull(), provincia, ciudad, añoMin.toIntOrNull(), añoMax.toIntOrNull(), kmMin.toIntOrNull(), kmMax.toIntOrNull(), combustible, color, automatico, puertas.toIntOrNull(), cilindrada.toIntOrNull())
-                }) { id -> navController.navigate("detail/$id") }
+                Busqueda(
+                    cars = cars,
+                    onApplyFilters = { marca, modelo, pMin, pMax, provincia, ciudad, añoMin, añoMax, kmMin, kmMax, combustible, color, automatico, puertas, cilindrada ->
+                        carVM.applyFilters(marca, modelo, pMin.toDoubleOrNull(), pMax.toDoubleOrNull(), provincia, ciudad, añoMin.toIntOrNull(), añoMax.toIntOrNull(), kmMin.toIntOrNull(), kmMax.toIntOrNull(), combustible, color, automatico, puertas.toIntOrNull(), cilindrada.toIntOrNull())
+                    },
+                    onCarClick = { id -> navController.navigate("detail/$id") }
+                )
             }
             composable("vender") {
                 RequireAuth(navController) {
@@ -158,16 +149,15 @@ fun Navegacion(
                 }
             }
             composable("detail/{carId}", arguments = listOf(navArgument("carId") { type = NavType.StringType })) { back ->
-                RequireAuth(navController) {
-                    val carId = back.arguments!!.getString("carId")!!
-                    Detalle(
-                        carId = carId,
-                        onBack = { navController.popBackStack() },
-                        onViewSeller = { uid -> navController.navigate("perfil/$uid") },
-                        onContact = { chatId, cocheId, sellerId -> navController.navigate("chat/$chatId/$cocheId/$sellerId") }
-                    )
-                }
+                val carId = back.arguments!!.getString("carId")!!
+                Detalle(
+                    carId = carId,
+                    onBack = { navController.popBackStack() },
+                    onViewSeller = { uid -> navController.navigate("perfil/$uid") },
+                    onContact = { chatId, cocheId, sellerId -> navController.navigate("chat/$chatId/$cocheId/$sellerId") }
+                )
             }
+
             composable("chats") {
                 RequireAuth(navController) {
                     ChatList(navController = navController, chatVM = chatVM)
@@ -178,28 +168,34 @@ fun Navegacion(
                     val userId = FirebaseAuth.getInstance().currentUser!!.uid
                     Perfil(
                         userId = userId,
-                        onCarClick = { id -> navController.navigate("detail/$id") },  // ✅ CORREGIDO: permite rutas como editar_coche
+                        onCarClick = { id -> navController.navigate("detail/$id") }, // ✅ para ver detalles
+                        onCarEdit = { id -> navController.navigate("editar_coche/$id") }, // ✅ para editar
                         onLogout = { navController.navigate("login") },
                         onUserClick = { uid -> navController.navigate("perfil/$uid") }
                     )
                 }
             }
+
             composable("perfil/{userId}", arguments = listOf(navArgument("userId") { type = NavType.StringType })) { back ->
                 RequireAuth(navController) {
                     val userId = back.arguments!!.getString("userId")!!
                     Perfil(
                         userId = userId,
                         onCarClick = { id -> navController.navigate("detail/$id") },
-                                onLogout = { navController.navigate("login") },
+                        onCarEdit = { id -> navController.navigate("editar_coche/$id") },
+                        onLogout = { navController.navigate("login") },
                         onUserClick = { uid -> navController.navigate("perfil/$uid") }
                     )
                 }
             }
-            composable("editar_coche/{id}") { backStackEntry ->
-                val cocheId = backStackEntry.arguments?.getString("id") ?: return@composable
-                EditarCoche(carId = cocheId, navController = navController)
-            }
 
+            composable(
+                "editar_coche/{carId}",
+                arguments = listOf(navArgument("carId") { type = NavType.StringType })
+            ) {
+                val carId = it.arguments?.getString("carId") ?: return@composable
+                EditarCoche(carId = carId, navController = navController)
+            }
             composable("chat/{chatId}/{cocheId}/{sellerId}", arguments = listOf(
                 navArgument("chatId") { type = NavType.StringType },
                 navArgument("cocheId") { type = NavType.StringType },

@@ -82,9 +82,13 @@ fun LoginScreen(
         Button(
             onClick = {
                 onGoogleSignIn()
-                vm.email    = email
+                vm.email = email
                 vm.password = password
-                googleLauncher.launch(vm.getGoogleSignInIntent(context as Activity))
+
+                val client = vm.getGoogleClient(context as Activity)
+                client.signOut().addOnCompleteListener {
+                    googleLauncher.launch(client.signInIntent)
+                }
             },
             Modifier
                 .fillMaxWidth()

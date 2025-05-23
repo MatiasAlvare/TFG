@@ -1,14 +1,10 @@
 // ✅ Código COMPLETO Busqueda.kt con todos los filtros alineados y funcionales
 
-@file:OptIn(
-    androidx.compose.material3.ExperimentalMaterial3Api::class,
-    androidx.compose.foundation.ExperimentalFoundationApi::class
-)
+
 package com.example.tfg_matias.pantallas
 
-import androidx.compose.foundation.ExperimentalFoundationApi
+
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,13 +28,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.tfg_matias.Model.Coche
 import com.example.tfg_matias.R
-import com.example.tfg_matias.pantallas.DesplegableCampo
 
-@OptIn(ExperimentalLayoutApi::class)
+
 @Composable
 fun Busqueda(
     cars: List<Coche>,

@@ -16,7 +16,7 @@ data class Coche(
     val puertas: Int = 0,
     val plazas: Int = 0,
     val cilindrada: Int = 0,
-    val potencia: Int? = null,
+    val potencia: Int = 0,  // en lugar de Int? = null
     val kilometros: Int = 0,
     val precio: Double = 0.0,
     val descripcion: String = "",
