@@ -5,7 +5,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 
 /**
@@ -39,16 +41,20 @@ fun Autorizacion(
  */
 @Composable
 fun RequireAuth(
-    navController: NavController,
+    navController: NavHostController,
     content: @Composable () -> Unit
 ) {
-    val user = FirebaseAuth.getInstance().currentUser
-    if (user == null) {
-        Autorizacion(
-            onRegister = { navController.navigate("register") },
-            onLogin    = { navController.navigate("login") }
-        )
-    } else {
+    val isLoggedIn = FirebaseAuth.getInstance().currentUser != null
+
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            navController.navigate("login") {
+                popUpTo("login") { inclusive = true }
+            }
+        }
+    }
+
+    if (isLoggedIn) {
         content()
     }
 }

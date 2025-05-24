@@ -32,11 +32,11 @@ import com.example.tfg_matias.utilidades.AuthViewModel
 
 @Composable
 fun LoginScreen(
-    onGoogleSignIn: () -> Unit = {},
-    onLoginSuccess: () -> Unit = {},
-    onRegisterClick: () -> Unit = {},
-    onForgotPasswordClick: () -> Unit = {},
-    onGuestAccess: () -> Unit = {}
+    onGoogleSignIn: () -> Unit = {}, // Acción al pulsar Google
+    onLoginSuccess: () -> Unit = {}, // Acción si login exitoso
+    onRegisterClick: () -> Unit = {}, // Ir a registro
+    onForgotPasswordClick: () -> Unit = {}, // Olvidaste contraseña
+    onGuestAccess: () -> Unit = {} // Acceso sin cuenta
 ) {
 
     val context = LocalContext.current
@@ -49,10 +49,10 @@ fun LoginScreen(
     val googleLauncher = rememberLauncherForActivityResult(
         StartActivityForResult()
     ) { result ->
-        vm.handleGoogleResponse(result.data)
+        vm.handleGoogleResponse(result.data) // Manejar resultado Google
     }
 
-    val authResult by vm.authResult.collectAsState()
+    val authResult by vm.authResult.collectAsState()  // Estado del login
 
     var email       by remember { mutableStateOf("") }
     var password    by remember { mutableStateOf("") }
@@ -63,6 +63,7 @@ fun LoginScreen(
     val red    = Color(0xFFFF0000)
     val greyBg = Color(0xFFEEEEEE)
 
+    // UI principal en columna centrada
     Column(
         Modifier
             .fillMaxSize()
@@ -78,7 +79,7 @@ fun LoginScreen(
         )
         Spacer(Modifier.height(24.dp))
 
-        // Google
+        // Botón de Google
         Button(
             onClick = {
                 onGoogleSignIn()
@@ -108,7 +109,7 @@ fun LoginScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // "o"
+        // Separador "o"
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 8.dp)
@@ -120,7 +121,7 @@ fun LoginScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Email
+        // Campo de email
         OutlinedTextField(
             value        = email,
             onValueChange = {
@@ -148,37 +149,39 @@ fun LoginScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Password
+        // Campo de contraseña
         OutlinedTextField(
-            value            = password,
-            onValueChange    = {
-                password = it
-                if (pwError) pwError = false
+            value = password, // Valor actual de la contraseña
+            onValueChange = {
+                password = it // Actualiza la variable cuando el usuario escribe
+                if (pwError) pwError = false // Si había error, lo resetea al escribir
             },
-            label            = { Text("Contraseña *") },
-            leadingIcon      = {
+            label = { Text("Contraseña *") }, // Etiqueta visible encima del campo
+            leadingIcon = { // Icono de candado al inicio del campo
                 Icon(
                     painterResource(R.drawable.ic_candado),
                     contentDescription = null,
                     Modifier.size(20.dp)
                 )
             },
-            trailingIcon     = {
+            trailingIcon = { // Icono que aparece al final del campo de texto
                 IconButton(onClick = { isPwVisible = !isPwVisible }) {
+                    // Al pulsar el botón, se invierte el estado de visibilidad de la contraseña
                     Icon(
                         painterResource(
                             id = if (isPwVisible) R.drawable.ic_ojo_abierto else R.drawable.ic_ojo
-                        ),
-                        contentDescription = null,
-                        Modifier.size(20.dp)
+                        ), // Muestra el icono de ojo abierto o cerrado según el estado
+                        contentDescription = null, // No es necesario para accesibilidad en este caso
+                        Modifier.size(20.dp) // Tamaño del icono
                     )
                 }
             },
-            visualTransformation = if (isPwVisible) VisualTransformation.None
-            else PasswordVisualTransformation(),
-            isError    = pwError,
-            modifier   = Modifier.fillMaxWidth()
+            visualTransformation = if (isPwVisible) VisualTransformation.None else PasswordVisualTransformation(), // Oculta o muestra el texto
+            isError = pwError, // Aplica estilo de error si corresponde
+            modifier = Modifier.fillMaxWidth() // Ocupa todo el ancho disponible
         )
+
+        // Si hay error, se muestra mensaje debajo del campo
         if (pwError) {
             Text(
                 "La contraseña no puede estar vacía",
@@ -187,9 +190,10 @@ fun LoginScreen(
             )
         }
 
+
         Spacer(Modifier.height(8.dp))
 
-        // Forgot password aligned left
+        // Link de recuperación de contraseña
         Row(
             Modifier
                 .fillMaxWidth()
@@ -205,7 +209,7 @@ fun LoginScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Sign in
+        // Botón para iniciar sesión
         Button(
             onClick = {
                 emailError = email.isBlank() || !email.contains("@")
@@ -231,7 +235,7 @@ fun LoginScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Register box
+        // Botón de registro
         OutlinedButton(
             onClick = onRegisterClick,
             modifier = Modifier.fillMaxWidth()
@@ -244,7 +248,7 @@ fun LoginScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Guest link (no box)
+        // Acceso como invitado
         Text(
             text = "Acceder sin cuenta",
             modifier = Modifier
@@ -252,7 +256,7 @@ fun LoginScreen(
                 .clickable { onGuestAccess() }
                 .padding(vertical = 8.dp),
             style = TextStyle(
-                color = Color(0xFF0D47A1),               // mismo azul del enlace
+                color = Color(0xFF0D47A1),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 textDecoration = TextDecoration.Underline
@@ -261,23 +265,23 @@ fun LoginScreen(
         )
     }
 
-    // Auth effect
+    // Efecto que se ejecuta al cambiar el estado de autenticación
     LaunchedEffect(authResult) {
         when (authResult) {
             is AuthRes.Success -> {
-                vm.crearUsuarioSiNoExiste()  // ✅ AÑADIDO
+                vm.crearUsuarioSiNoExiste()
                 onLoginSuccess()
                 vm.clearAuthResult()
             }
 
             is AuthRes.Error -> {
-                Toast.makeText(
-                    context,
-                    (authResult as AuthRes.Error).errorMessage,
-                    Toast.LENGTH_LONG
-                ).show()
+                val error = (authResult as AuthRes.Error).errorMessage
+                if (error != "Sesión cerrada" && error != "The user is not signed in") {
+                    Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                }
                 vm.clearAuthResult()
             }
+
             else -> {}
         }
     }

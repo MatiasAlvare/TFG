@@ -17,7 +17,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        println("🎯 Nuevo token FCM: $token")
+        println("Nuevo token FCM: $token")
         // Aquí puedes guardar el token en Firestore si quieres hacerlo automáticamente
     }
 
@@ -32,7 +32,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val cocheId = remoteMessage.data["cocheId"]
         val sellerId = remoteMessage.data["sellerId"]
 
-        // ✅ Mostrar notificación tú mismo SIEMPRE
+        // Mostrar notificación tú mismo SIEMPRE
         sendNotification(title, body, chatId, cocheId, sellerId)
     }
 

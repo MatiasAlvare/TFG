@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.example.tfg_matias.pantallas
 
 import android.widget.Toast
@@ -20,16 +18,18 @@ import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun OlvidoContraseña(
-    navController: NavController
+    navController: NavController // Permite navegación tras enviar el email
 ) {
     val context = LocalContext.current
 
-    var email by remember { mutableStateOf("") }
-    var emailError by remember { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(false) }
+    var email by remember { mutableStateOf("") } // Email introducido
+    var emailError by remember { mutableStateOf(false) } // Error en email
+    var loading by remember { mutableStateOf(false) } // Estado de carga
+
 
     val primaryRed = Color(0xFFFF0000)
 
+    // Estructura vertical centrada
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -37,6 +37,7 @@ fun OlvidoContraseña(
         verticalArrangement   = Arrangement.Center,
         horizontalAlignment  = Alignment.CenterHorizontally
     ) {
+        // Título de la pantalla
         Text(
             text = "Restablece tu contraseña",
             style = MaterialTheme.typography.headlineSmall
@@ -44,6 +45,7 @@ fun OlvidoContraseña(
 
         Spacer(Modifier.height(24.dp))
 
+        // Campo de email
         OutlinedTextField(
             value = email,
             onValueChange = {
@@ -63,6 +65,7 @@ fun OlvidoContraseña(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier   = Modifier.fillMaxWidth()
         )
+        // Mensaje de error si el email no es válido
         if (emailError) {
             Text(
                 text  = "Introduce un email válido",
@@ -73,21 +76,24 @@ fun OlvidoContraseña(
 
         Spacer(Modifier.height(24.dp))
 
+        // Botón para enviar el enlace de recuperación
         Button(
             onClick = {
-                if (loading) return@Button
+                if (loading) return@Button // Evitar múltiples clics
                 if (email.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                     emailError = true
                     Toast.makeText(context, "Email inválido", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
+                // Enviar email de recuperación
                 loading = true
                 FirebaseAuth.getInstance()
                     .sendPasswordResetEmail(email.trim())
                     .addOnSuccessListener {
                         loading = false
                         Toast.makeText(context, "Enlace enviado", Toast.LENGTH_LONG).show()
+                        // Navegar a pantalla de confirmación
                         navController.navigate("reset_confirmation") {
                             popUpTo("forgot_password") { inclusive = true }
                         }
@@ -101,13 +107,14 @@ fun OlvidoContraseña(
                         ).show()
                     }
             },
-            enabled = !loading,
+            enabled = !loading, // Desactiva botón mientras carga
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = primaryRed),
             shape = MaterialTheme.shapes.medium
         ) {
+            // Cambia texto según estado
             Text(text = if (loading) "Enviando..." else "Enviar enlace", color = Color.White)
         }
     }

@@ -11,8 +11,6 @@ import androidx.activity.result.contract.ActivityResultContracts.GetMultipleCont
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,11 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.example.tfg_matias.Model.Coche
@@ -405,7 +403,6 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
                     fotos = listOf(),
                     marca = marca,
                     modelo = modelo,
-                    carroceria = "",
                     combustible = combustible,
                     año = anio,
                     automatico = automatico ?: false,
@@ -437,17 +434,20 @@ fun Vender(onSubmit: (Coche, List<Uri>) -> Unit) {
 // Dialogo de éxito
         if (showDialog) {
             AlertDialog(
-                onDismissRequest = { showDialog = false },
+                onDismissRequest = {},
                 title = { Text("¡Coche publicado!") },
                 text = { Text("Tu coche ha sido publicado correctamente.") },
-                confirmButton = {
-
-                    Button(onClick = { showDialog = false }) {
-                        Text("Aceptar")
-                    }
-                }
+                confirmButton = {}
             )
+
+            // Cierra automáticamente tras 2 segundos
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(2000)
+                showDialog = false
+            }
         }
+
+
 
 // Dialogo de error si faltan campos
         if (showErrorDialog) {

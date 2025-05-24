@@ -46,7 +46,7 @@ class CarViewModel : ViewModel() {
                 _cars.value = coches
                 _filteredCars.value = coches
             } catch (e: Exception) {
-                println("❌ Error cargando coches: ${e.localizedMessage}")
+                println("Error cargando coches: ${e.localizedMessage}")
             }
         }
     }
@@ -73,12 +73,12 @@ class CarViewModel : ViewModel() {
                 loadCars()
 
             } catch (e: Exception) {
-                println("❌ Error al subir coche: ${e.localizedMessage}")
+                println("Error al subir coche: ${e.localizedMessage}")
             }
         }
     }
 
-    // ✅ Nueva función applyFilters estilo coches.net con todos los campos
+    // Nueva función applyFilters estilo coches.net con todos los campos
     fun applyFilters(
         marca: String?,
         modelo: String?,
@@ -125,7 +125,7 @@ class CarViewModel : ViewModel() {
             val snapshot = db.collection("cars").document(carId).get().await()
             snapshot.toObject(Coche::class.java)?.copy(id = carId)
         } catch (e: Exception) {
-            println("❌ Error al obtener coche: ${e.localizedMessage}")
+            println("Error al obtener coche: ${e.localizedMessage}")
             null
         }
     }
@@ -135,7 +135,7 @@ class CarViewModel : ViewModel() {
             val snapshot = db.collection("users").document(userId).get().await()
             snapshot.toObject(Usuario::class.java)?.copy(id = userId)
         } catch (e: Exception) {
-            println("❌ Error al obtener usuario: ${e.localizedMessage}")
+            println("Error al obtener usuario: ${e.localizedMessage}")
             null
         }
     }
@@ -148,18 +148,6 @@ class CarViewModel : ViewModel() {
         return ref.downloadUrl.await().toString()
     }
 
-    fun etiquetaVisual(valor: String): String {
-        return when {
-            valor.contains("CERO", ignoreCase = true) -> "🟦 CERO"
-            valor.contains("ECO", ignoreCase = true) -> "🟢 ECO"
-            valor.contains("C (verde)", ignoreCase = true) -> "🟢 C"
-            valor.contains("B", ignoreCase = true) -> "🟡 B"
-            valor.contains("Sin", ignoreCase = true) -> "🚫 Sin etiqueta"
-            else -> valor
-        }
-    }
-
-
     // Obtener perfil de usuario
     fun getUserProfile(userId: String) {
         val db = FirebaseFirestore.getInstance()
@@ -167,7 +155,7 @@ class CarViewModel : ViewModel() {
             try {
                 val doc = db.collection("users").document(userId).get().await()
 
-                // 🔍 Migración de comentarios tipo String a Comentario
+                // Migración de comentarios tipo String a Comentario
                 val rawComentarios = doc.get("comentarios")
                 if (rawComentarios is List<*> && rawComentarios.any { it is String }) {
                     val nuevosComentarios = rawComentarios.mapNotNull {

@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
                 carVM.loadCars()
             }
 
-            // ✅ Pasamos los extras al sistema de navegación
+            // Pasamos los extras al sistema de navegación
             Navegacion(
                 carVM = carVM,
                 initialChatId = chatId,
@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
                 initialSellerId = sellerId
             )
 
-            TFG_MATIASTheme{ // 👈 aquí se aplica el tema personalizado
+            TFG_MATIASTheme{ // aquí se aplica el tema personalizado
                 Navegacion(
                     carVM = carVM,
                     initialChatId = chatId,

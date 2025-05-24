@@ -47,18 +47,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
      * Construye el Intent para iniciar el flujo de Google Sign-In
      * desde la Activity o Composable que lo invoque.
      */
-    fun getGoogleSignInIntent(activity: Activity): Intent {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(
-                getApplication<Application>()
-                    .getString(R.string.default_web_client_id)
-            )
-            .requestEmail()
-            .build()
-
-        val googleClient = GoogleSignIn.getClient(activity, gso)
-        return googleClient.signInIntent
-    }
 
     /** Procesa la respuesta de la Intent de Google */
     fun handleGoogleResponse(data: Intent?) = viewModelScope.launch {
@@ -120,7 +108,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return GoogleSignIn.getClient(context, gso)
     }
 
-
     fun register() = viewModelScope.launch {
         _authResult.value = AuthRes.Loading
         try {
@@ -148,20 +135,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _authResult.value = AuthRes.Success
         } catch (e: Exception) {
             _authResult.value = AuthRes.Error(e.localizedMessage ?: "Error registro")
-        }
-    }
-
-    /** Enviar email de reseteo */
-    fun resetPassword() = viewModelScope.launch {
-        _authResult.value = AuthRes.Loading
-        try {
-            Firebase.auth
-                .sendPasswordResetEmail(email)
-                .await()
-            _authResult.value = AuthRes.Success
-        } catch (e: Exception) {
-            Log.e("AuthVM", "Reset password failed:", e)
-            _authResult.value = AuthRes.Error(e.localizedMessage ?: "Error reset")
         }
     }
 

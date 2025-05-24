@@ -1,6 +1,3 @@
-// ✅ Código COMPLETO Busqueda.kt con todos los filtros alineados y funcionales
-
-
 package com.example.tfg_matias.pantallas
 
 
@@ -62,9 +59,24 @@ fun Busqueda(
         "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo")
     val colores = listOf("Blanco", "Negro", "Gris", "Rojo", "Azul", "Verde", "Amarillo", "Naranja", "Marrón", "Beige")
     val combustibles = listOf("Gasolina", "Diésel", "Eléctrico", "Híbrido")
-    val provincias = listOf("Madrid", "Barcelona", "Valencia", "Sevilla", "Zaragoza")
+    val provincias = mapOf(
+        "Madrid" to listOf("Madrid", "Alcalá de Henares", "Móstoles", "Leganés", "Getafe"),
+        "Barcelona" to listOf("Barcelona", "Hospitalet", "Terrassa", "Badalona"),
+        "Valencia" to listOf("Valencia", "Torrent", "Gandía"),
+        "Sevilla" to listOf("Sevilla", "Dos Hermanas", "Alcalá de Guadaíra"),
+        "Zaragoza" to listOf("Zaragoza", "Calatayud"),
+        "Málaga" to listOf("Málaga", "Marbella", "Fuengirola"),
+        "Alicante" to listOf("Alicante", "Elche", "Benidorm"),
+        "Murcia" to listOf("Murcia", "Cartagena"),
+        "Cádiz" to listOf("Cádiz", "Jerez", "Algeciras"),
+        "Granada" to listOf("Granada", "Motril", "Baza"),
+        "Vizcaya" to listOf("Bilbao", "Barakaldo", "Getxo"),
+        "La Coruña" to listOf("A Coruña", "Santiago", "Ferrol")
+    )
     val años = (1975..2025).map { it.toString() }.reversed()
     val tiposCambio = listOf("Automático", "Manual")
+
+
 
     var query by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
@@ -198,9 +210,16 @@ fun Busqueda(
 
                         Spacer(Modifier.height(8.dp))
                         Text("Provincia y ciudad", style = MaterialTheme.typography.titleMedium)
-                        DesplegableCampo("Provincia", provincia, provincias) { provincia = it }
-                        OutlinedTextField(value = ciudad, onValueChange = { ciudad = it }, label = { Text("Ciudad") }, modifier = Modifier.fillMaxWidth())
-
+                        DesplegableCampo("Selecciona provincia", provincia, provincias.keys.sorted()) {
+                            provincia = it
+                        }
+                        if (provincia.isNotBlank()) {
+                            DesplegableCampo(
+                                "Selecciona ciudad",
+                                ciudad,
+                                provincias[provincia] ?: emptyList()
+                            ) { ciudad = it }
+                        }
                         Spacer(Modifier.height(8.dp))
                         Text("Año de matriculación", style = MaterialTheme.typography.titleMedium)
                         Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {

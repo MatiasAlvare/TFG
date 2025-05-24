@@ -1,7 +1,7 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
+// Composable que muestra una pantalla de confirmación tras enviar un email de recuperación
 package com.example.tfg_matias.pantallas
 
+// Importaciones necesarias para UI y estilos
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -16,12 +16,13 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun EnlaceEnviado(
-    onContinue: () -> Unit
+    onContinue: () -> Unit // Acción a ejecutar al pulsar el botón "Continuar"
 ) {
-    // Color rojo principal que usas en toda la app
+    // Definición del color rojo principal y color del texto
     val primaryRed = Color(0xFFFF0000)
     val textColor  = Color.Black
 
+    // Contenedor principal en columna, centrado en pantalla
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -29,6 +30,7 @@ fun EnlaceEnviado(
         verticalArrangement  = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Título principal
         Text(
             text      = "Tienes un email",
             style     = MaterialTheme.typography.headlineSmall.copy(
@@ -39,8 +41,9 @@ fun EnlaceEnviado(
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp)) // Espaciado vertical
 
+        // Mensaje informativo con instrucciones
         Text(
             text      = "Te hemos enviado un enlace con el que restablecer tu contraseña.\n\n" +
                     "Puede tardar unos minutos en llegarte. Si no lo recibes, revisa tu carpeta de spam para asegurarte de que no haya terminado allí.",
@@ -52,6 +55,7 @@ fun EnlaceEnviado(
                 .padding(bottom = 24.dp)
         )
 
+        // Botón para continuar
         Button(
             onClick   = onContinue,
             modifier  = Modifier

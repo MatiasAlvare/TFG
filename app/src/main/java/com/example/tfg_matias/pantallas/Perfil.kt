@@ -1,4 +1,4 @@
-// ✅ Código COMPLETO para Perfil.kt con media de valoración, comentarios editables, diseño visual y sección de publicaciones + cuenta
+// Código COMPLETO para Perfil.kt con media de valoración, comentarios editables, diseño visual y sección de publicaciones + cuenta
 
 package com.example.tfg_matias.pantallas
 
@@ -39,7 +39,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 
-fun formatFecha(timestamp: com.google.firebase.Timestamp): String {
+fun formatFecha(timestamp: Timestamp): String {
     val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     return sdf.format(timestamp.toDate())
 }
@@ -58,12 +58,11 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onCarEdit: (String) -> 
     var showImageDialog by remember { mutableStateOf(false) }
     var nuevaFotoUri by remember { mutableStateOf<Uri?>(null) }
     var comentarioEditando by remember { mutableStateOf<Comentario?>(null) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    var cocheAEliminarId by remember { mutableStateOf<String?>(null) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val isCurrentUser = FirebaseAuth.getInstance().currentUser?.uid == userId
-    val launcher =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             val uid = FirebaseAuth.getInstance().currentUser?.uid
                 ?: return@rememberLauncherForActivityResult
             val db = FirebaseFirestore.getInstance()
@@ -99,7 +98,7 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onCarEdit: (String) -> 
     LaunchedEffect(userId) {
         vm.getUserProfile(userId)
         vm.loadCars()
-        vm.loadAllUsers()  // 👈 aquí se cargan los nombres de los autores
+        vm.loadAllUsers()  // aquí se cargan los nombres de los autores
     }
 
 
@@ -371,7 +370,7 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onCarEdit: (String) -> 
                                             }
                                         }
                                     },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // 🔴 botón rojo
+                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // botón rojo
                                 ) {
                                     Text("Eliminar")
                                 }
@@ -379,7 +378,7 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onCarEdit: (String) -> 
                                 var showDeleteConfirm by remember { mutableStateOf(false) }
                                 TextButton(
                                     onClick = { showDeleteConfirm = true },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // 🔴 botón rojo
+                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red) // botón rojo
                                 ) {
 
                                     Text("Eliminar")
@@ -493,17 +492,19 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onCarEdit: (String) -> 
             } else {
                 cochesPublicados.forEach { coche ->
                     Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
                         shape = MaterialTheme.shapes.medium
                     ) {
                         Column(Modifier.padding(12.dp)) {
                             CocheCard(coche = coche, onClick = { onCarClick(coche.id) })
+
                             if (isCurrentUser) {
                                 Spacer(Modifier.height(8.dp))
+
                                 Button(
-                                    onClick = {
-                                        onCarEdit(coche.id)  // ✅ Esto lleva a EditarCoche
-                                    },
+                                    onClick = { onCarEdit(coche.id) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color.Black,
                                         contentColor = Color.White
@@ -512,62 +513,70 @@ fun Perfil(userId: String, onCarClick: (String) -> Unit, onCarEdit: (String) -> 
                                 ) {
                                     Text("Editar publicación")
                                 }
+
                                 Spacer(Modifier.height(8.dp))
-                                if (showDeleteDialog) {
-                                    AlertDialog(
-                                        onDismissRequest = { showDeleteDialog = false },
-                                        title = { Text("¿Eliminar publicación?") },
-                                        text = { Text("¿Estás seguro de que deseas eliminar esta publicación? Esta acción no se puede deshacer.") },
-                                        confirmButton = {
-                                            TextButton(onClick = {
-                                                showDeleteDialog = false
-                                                val db = FirebaseFirestore.getInstance()
-                                                db.collection("cars").document(coche.id).delete()
-                                                    .addOnSuccessListener {
-                                                        Toast.makeText(
-                                                            context,
-                                                            "Publicación eliminada",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                        db.collection("chats")
-                                                            .whereEqualTo("cocheId", coche.id).get()
-                                                            .addOnSuccessListener { snapshot ->
-                                                                for (doc in snapshot.documents) {
-                                                                    db.collection("chats")
-                                                                        .document(doc.id).delete()
-                                                                }
-                                                            }
-                                                        vm.removeCarLocally(coche.id)
-                                                    }
-                                            }) {
-                                                Text(
-                                                    "Eliminar",
-                                                    color = MaterialTheme.colorScheme.error
-                                                )
-                                            }
-                                        },
-                                        dismissButton = {
-                                            TextButton(onClick = { showDeleteDialog = false }) {
-                                                Text("Cancelar")
-                                            }
-                                        }
-                                    )
-                                }
 
                                 Button(
-                                    onClick = { showDeleteDialog = true },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                    onClick = { cocheAEliminarId = coche.id },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text(
-                                        "Eliminar publicación",
-                                        color = MaterialTheme.colorScheme.onError
-                                    )
+                                    Text("Eliminar publicación", color = MaterialTheme.colorScheme.onError)
                                 }
                             }
                         }
                     }
                 }
+                if (cocheAEliminarId != null) {
+                    AlertDialog(
+                        onDismissRequest = { cocheAEliminarId = null },
+                        title = { Text("¿Eliminar publicación?") },
+                        text = { Text("¿Estás seguro de que deseas eliminar esta publicación? Esta acción no se puede deshacer.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                val id = cocheAEliminarId
+                                cocheAEliminarId = null
+                                if (id != null) {
+                                    val db = FirebaseFirestore.getInstance()
+                                    db.collection("cars").document(id).delete()
+                                        .addOnSuccessListener {
+                                            Toast.makeText(
+                                                context,
+                                                "Publicación eliminada",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            db.collection("chats")
+                                                .whereEqualTo("cocheId", id).get()
+                                                .addOnSuccessListener { snapshot ->
+                                                    for (doc in snapshot.documents) {
+                                                        db.collection("chats").document(doc.id).delete()
+                                                    }
+                                                }
+                                            vm.removeCarLocally(id)
+                                            vm.applyFilters(
+                                                marca = "", modelo = "", precioMin = null, precioMax = null,
+                                                provincia = "", ciudad = "", añoMin = null, añoMax = null,
+                                                kmMin = null, kmMax = null, combustible = "", color = "",
+                                                automatico = "", puertas = null, cilindrada = null
+                                            )
+
+                                            vm.loadCars()
+                                        }
+                                }
+                            }) {
+                                Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { cocheAEliminarId = null }) {
+                                Text("Cancelar")
+                            }
+                        }
+                    )
+                }
+
             }
 
             if (isCurrentUser) {

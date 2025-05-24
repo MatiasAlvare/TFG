@@ -1,12 +1,7 @@
 package com.example.tfg_matias.navegacion
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.media.RingtoneManager
-import android.net.Uri
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -58,7 +53,7 @@ fun Navegacion(
 
     LaunchedEffect(unreadCount) {
         if (unreadCount > previousUnreadCount.value) {
-            val mensaje = if (unreadCount == 1) "📩 Tienes un mensaje nuevo" else "📬 Tienes $unreadCount mensajes nuevos"
+            val mensaje = if (unreadCount == 1) "Tienes un mensaje nuevo" else "Tienes $unreadCount mensajes nuevos"
             val result = snackbarHostState.showSnackbar(
                 message = mensaje,
                 actionLabel = "Ver",
@@ -152,6 +147,7 @@ fun Navegacion(
                 val carId = back.arguments!!.getString("carId")!!
                 Detalle(
                     carId = carId,
+                    navController = navController,
                     onBack = { navController.popBackStack() },
                     onViewSeller = { uid -> navController.navigate("perfil/$uid") },
                     onContact = { chatId, cocheId, sellerId -> navController.navigate("chat/$chatId/$cocheId/$sellerId") }
@@ -168,8 +164,8 @@ fun Navegacion(
                     val userId = FirebaseAuth.getInstance().currentUser!!.uid
                     Perfil(
                         userId = userId,
-                        onCarClick = { id -> navController.navigate("detail/$id") }, // ✅ para ver detalles
-                        onCarEdit = { id -> navController.navigate("editar_coche/$id") }, // ✅ para editar
+                        onCarClick = { id -> navController.navigate("detail/$id") }, // para ver detalles
+                        onCarEdit = { id -> navController.navigate("editar_coche/$id") }, // para editar
                         onLogout = { navController.navigate("login") },
                         onUserClick = { uid -> navController.navigate("perfil/$uid") }
                     )

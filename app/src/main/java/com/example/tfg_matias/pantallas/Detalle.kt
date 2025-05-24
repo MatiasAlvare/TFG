@@ -4,14 +4,12 @@
 
 package com.example.tfg_matias.pantallas
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,36 +36,39 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.navigation.NavController
 
 
 
+
+// Función Composable que muestra la pantalla de detalle de un coche
 @Composable
 fun Detalle(
-    carId: String,
-    onBack: () -> Unit,
-    onViewSeller: (String) -> Unit,
-    onContact: (chatId: String, cocheId: String, sellerId: String) -> Unit
+    carId: String, // ID del coche a mostrar
+    onBack: () -> Unit, // Acción al pulsar el botón de retroceso
+    onViewSeller: (String) -> Unit, // Acción al pulsar "Ver perfil"
+    onContact: (chatId: String, cocheId: String, sellerId: String) -> Unit, // Acción al pulsar "Contactar"
+    navController: NavController // Controlador de navegación
 ) {
-    val vm: CarViewModel = viewModel()
-    val chatVM: ChatViewModel = viewModel()
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val currentUser = FirebaseAuth.getInstance().currentUser?.uid
+    val vm: CarViewModel = viewModel() // ViewModel para acceder a los datos del coche
+    val chatVM: ChatViewModel = viewModel() // ViewModel para la lógica del chat
+    val coroutineScope = rememberCoroutineScope() // Para lanzar corrutinas
+    val currentUser = FirebaseAuth.getInstance().currentUser?.uid // UID del usuario actual
 
-    var coche by remember { mutableStateOf<Coche?>(null) }
-    var vendedor by remember { mutableStateOf<Usuario?>(null) }
-    var isOwnCar by remember { mutableStateOf(false) }
-    var showProfileImage by remember { mutableStateOf(false) }
-    val isLoggedIn = FirebaseAuth.getInstance().currentUser != null
-    var showLoginPrompt by remember { mutableStateOf(false) }
+    var coche by remember { mutableStateOf<Coche?>(null) } // Coche actual
+    var vendedor by remember { mutableStateOf<Usuario?>(null) } // Usuario que publicó el coche
+    var isOwnCar by remember { mutableStateOf(false) } // Si el coche pertenece al usuario actual
+    var showProfileImage by remember { mutableStateOf(false) } // Controla si mostrar imagen ampliada
+    val isLoggedIn = FirebaseAuth.getInstance().currentUser != null // Verifica si hay sesión iniciada
+    var showLoginPrompt by remember { mutableStateOf(false) } // Controla si mostrar aviso de login
 
+    var showGallery by remember { mutableStateOf(false) } // Controla si mostrar galería de imágenes
+    var initialPage by remember { mutableStateOf(0) } // Página inicial en la galería
 
-
-    var showGallery by remember { mutableStateOf(false) }
-    var initialPage by remember { mutableStateOf(0) }
-
+    // Efecto lanzado al montar el Composable: carga el coche y el vendedor
     LaunchedEffect(carId) {
         coche = vm.getCarById(carId)
         coche?.let {
@@ -77,6 +77,7 @@ fun Detalle(
         }
     }
 
+    // Si se ha cargado el coche, construimos la interfaz
     coche?.let { c ->
         val imagenes = if (c.fotos.isNotEmpty()) c.fotos else listOfNotNull(c.imageUrl.takeIf { it.isNotBlank() })
         var imagenSeleccionada by remember { mutableStateOf(imagenes.firstOrNull() ?: "") }
@@ -133,7 +134,8 @@ fun Detalle(
                     )
                 }
             }
-
+            
+            // Galería en pantalla completa
             if (showGallery) {
                 Dialog(
                     onDismissRequest = { showGallery = false },
@@ -153,9 +155,18 @@ fun Detalle(
                                 }
                                 IconButton(
                                     onClick = { showGallery = false },
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(12.dp)
+                                        .size(36.dp)
+                                        .background(Color.White.copy(alpha = 0.9f), shape = CircleShape)
                                 ) {
-                                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cerrar",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         }
@@ -171,7 +182,7 @@ fun Detalle(
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("${c.marca} ${c.modelo} ${c.carroceria}".trim(), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                    Text("${c.marca} ${c.modelo}".trim(), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
                     Spacer(Modifier.height(8.dp))
                     Text("Precio al contado", style = MaterialTheme.typography.bodySmall)
                     Text("${c.precio} €", color = Color.Red, fontWeight = FontWeight.Bold)
@@ -209,9 +220,10 @@ fun Detalle(
                 }
             }
 
-            // Vendedor
+            // Tarjeta que muestra la información del vendedor
             Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(6.dp)) {
                 Row(Modifier.padding(16.dp)) {
+                    // Muestra la foto del vendedor si está disponible
                     if (vendedor?.photoUrl?.isNotBlank() == true) {
                         AsyncImage(
                             model = vendedor!!.photoUrl,
@@ -222,6 +234,7 @@ fun Detalle(
                                 .clickable { showProfileImage = true }
                         )
                     } else {
+                        // Si no hay foto, se muestra un icono por defecto
                         Icon(
                             painter = painterResource(R.drawable.ic_usuario),
                             contentDescription = "Foto",
@@ -231,6 +244,7 @@ fun Detalle(
                         )
                     }
 
+                    // Muestra imagen ampliada si se ha pulsado
                     if (showProfileImage && vendedor?.photoUrl?.isNotBlank() == true) {
                         AlertDialog(
                             onDismissRequest = { showProfileImage = false },
@@ -254,7 +268,10 @@ fun Detalle(
 
                     Spacer(Modifier.width(12.dp))
                     Column {
+                        // Muestra el nombre del vendedor o un texto por defecto
                         Text(vendedor?.name ?: "Usuario no disponible", style = MaterialTheme.typography.titleMedium)
+
+                        // Calcula y muestra la valoración media del vendedor
                         val mediaValoracion = vendedor?.comentarios
                             ?.map { it.valoracion }
                             ?.filter { it > 0 }
@@ -264,7 +281,9 @@ fun Detalle(
 
                         Text("★ ${"%.1f".format(mediaValoracion)}", style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(8.dp))
+                        // Si hay datos del vendedor disponibles
                         if (vendedor != null) {
+                            // Botón para ver perfil
                             Button(
                                 onClick = { if (isLoggedIn) {
                                     onViewSeller(vendedor!!.id)
@@ -277,6 +296,8 @@ fun Detalle(
                                 Text("Ver perfil")
                             }
                             Spacer(Modifier.height(8.dp))
+
+                            // Botón para contactar si no es el coche propio
                             if (!isOwnCar) {
                                 Button(
                                     onClick = {
@@ -294,6 +315,7 @@ fun Detalle(
                                     Text("Contactar")
                                 }
                             } else {
+                                // Si es el propio anuncio, se muestra un aviso
                                 Text("Este es tu anuncio", style = MaterialTheme.typography.bodySmall)
                             }
                         }
@@ -301,6 +323,8 @@ fun Detalle(
                 }
             }
         }
+
+        // Diálogo emergente si se intenta interactuar sin estar logueado
         if (showLoginPrompt) {
             AlertDialog(
                 onDismissRequest = { showLoginPrompt = false },
@@ -309,7 +333,7 @@ fun Detalle(
                 confirmButton = {
                     Button(onClick = {
                         showLoginPrompt = false
-                        onBack()  // Opcional: vuelve atrás o usa navController.navigate("register")
+                        navController.navigate("register")
                     }) {
                         Text("Regístrate")
                     }
@@ -317,7 +341,7 @@ fun Detalle(
                 dismissButton = {
                     OutlinedButton(onClick = {
                         showLoginPrompt = false
-                        onBack()  // Opcional: vuelve atrás o usa navController.navigate("login")
+                        navController.navigate("login")
                     }) {
                         Text("Inicia sesión")
                     }
@@ -329,6 +353,7 @@ fun Detalle(
     }
 }
 
+// Fila de dos atributos clave:valor en la ficha técnica
 @Composable
 fun FichaRow(label1: String, value1: String, label2: String, value2: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -344,6 +369,7 @@ fun FichaRow(label1: String, value1: String, label2: String, value2: String) {
     }
 }
 
+// Función que devuelve una etiqueta visual según el valor
 @Composable
 fun etiquetaVisual(valor: String): String {
     return when {

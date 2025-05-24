@@ -1,7 +1,6 @@
 package com.example.tfg_matias.utilidades
 
 import android.content.Context
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -55,7 +54,7 @@ class ChatViewModel : ViewModel() {
     val unreadCount: StateFlow<Int> = _unreadCount
 
 
-    // ✅ Contexto de la app para poder mostrar Toast
+    // Contexto de la app para poder mostrar Toast
     private var appContext: Context? = null
     fun setContext(context: Context) {
         appContext = context.applicationContext
@@ -74,7 +73,7 @@ class ChatViewModel : ViewModel() {
             .whereArrayContains("participants", userId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    println("❌ Error cargando chats: ${e.localizedMessage}")
+                    println("Error cargando chats: ${e.localizedMessage}")
                     return@addSnapshotListener
                 }
                 val chats = snapshot?.documents?.mapNotNull {
@@ -84,13 +83,13 @@ class ChatViewModel : ViewModel() {
             }
     }
 
-    // 🔄 Escucha global de mensajes no leídos
+    // Escucha global de mensajes no leídos
     private fun observeUnreadMessagesSimplified(userId: String) {
         db.collection("chats")
             .whereArrayContains("participants", userId)
             .addSnapshotListener { chatsSnapshot, chatError ->
                 if (chatError != null) {
-                    println("❌ Error al escuchar chats del usuario: ${chatError.localizedMessage}")
+                    println("Error al escuchar chats del usuario: ${chatError.localizedMessage}")
                     return@addSnapshotListener
                 }
 
@@ -101,13 +100,13 @@ class ChatViewModel : ViewModel() {
                 userChats.forEach { chatDoc ->
                     val chatId = chatDoc.id
                     val messagesRef = chatDoc.reference.collection("messages")
-                        .whereEqualTo("seen", false) // 🔁 antes decía "seen"
+                        .whereEqualTo("seen", false) //  antes decía "seen"
                         .whereNotEqualTo("senderId", userId)
 
 
                     messagesRef.addSnapshotListener { messagesSnapshot, msgError ->
                         if (msgError != null) {
-                            println("❌ Error escuchando mensajes no leídos en $chatId: ${msgError.localizedMessage}")
+                            println("Error escuchando mensajes no leídos en $chatId: ${msgError.localizedMessage}")
                             return@addSnapshotListener
                         }
 
@@ -132,7 +131,7 @@ class ChatViewModel : ViewModel() {
             .orderBy("timestamp")
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    println("❌ Error cargando mensajes: ${e.localizedMessage}")
+                    println("Error cargando mensajes: ${e.localizedMessage}")
                     return@addSnapshotListener
                 }
                 val msgs = snapshot?.documents?.mapNotNull {
@@ -150,8 +149,8 @@ class ChatViewModel : ViewModel() {
             "receiverId" to receiverId,
             "text" to text,
             "timestamp" to System.currentTimeMillis(),
-            "seen" to false // ⚠️ asegúrate de que esto sea "seen", no "visto"
-            // ✅ Campo corregido
+            "seen" to false //  asegúrate de que esto sea "seen", no "visto"
+            //  Campo corregido
         )
 
 
@@ -172,7 +171,7 @@ class ChatViewModel : ViewModel() {
                     com.google.firebase.firestore.SetOptions.merge()
                 ).await()
 
-                // ✅ SOLO ENVIAMOS PUSH AL RECEPTOR (NO a uno mismo)
+                //  SOLO ENVIAMOS PUSH AL RECEPTOR (NO a uno mismo)
                 if (receiverId != userId) {
                     val receiverDoc = db.collection("users").document(receiverId).get().await()
                     val token = receiverDoc.getString("fcmToken")
@@ -193,7 +192,7 @@ class ChatViewModel : ViewModel() {
                 }
 
             } catch (e: Exception) {
-                println("❌ Error enviando mensaje o push: ${e.localizedMessage}")
+                println("Error enviando mensaje o push: ${e.localizedMessage}")
             }
         }
     }
@@ -219,10 +218,10 @@ class ChatViewModel : ViewModel() {
                     doc.reference.update("seen", true)
                 }
 
-                println("✅ Mensajes marcados como vistos en $chatId")
+                println("Mensajes marcados como vistos en $chatId")
 
             } catch (e: Exception) {
-                println("❌ Error marcando mensajes como vistos: ${e.localizedMessage}")
+                println("Error marcando mensajes como vistos: ${e.localizedMessage}")
             }
         }
     }
@@ -269,7 +268,7 @@ class ChatViewModel : ViewModel() {
 
     private fun sendPushNotification(payload: Map<String, Any>) {
         val fcmUrl = "https://fcm.googleapis.com/fcm/send"
-        val serverKey = "Ux1NvXnDiZjKm-wmFajto3EnfuqNUv2eQm2chn5GqYM" // ⚠️ Sustituye por tu clave real
+        val serverKey = "Ux1NvXnDiZjKm-wmFajto3EnfuqNUv2eQm2chn5GqYM" // Sustituye por tu clave real
 
         viewModelScope.launch {
             try {
@@ -285,10 +284,10 @@ class ChatViewModel : ViewModel() {
                     .build()
 
                 val response = client.newCall(request).execute()
-                println("✅ Notificación enviada: ${response.code}")
-                println("📨 Respuesta: ${response.body?.string()}")
+                println(" Notificación enviada: ${response.code}")
+                println(" Respuesta: ${response.body?.string()}")
             } catch (e: Exception) {
-                println("❌ Error al enviar push: ${e.localizedMessage}")
+                println(" Error al enviar push: ${e.localizedMessage}")
             }
         }
     }

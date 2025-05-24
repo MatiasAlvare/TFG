@@ -1,4 +1,4 @@
-// ✅ EditarCoche.kt: copia exacta de Vender.kt con datos precargados y edición habilitada
+// EditarCoche.kt: copia exacta de Vender.kt con datos precargados y edición habilitada
 
 package com.example.tfg_matias.pantallas
 
@@ -99,16 +99,16 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
     var showErrorDialog by remember { mutableStateOf(false) }
 
 
-
+    // Bloque que lanza el selector de imágenes múltiples
     val picker = rememberLauncherForActivityResult(GetMultipleContents()) { uris ->
         uris.forEach { uri ->
             scope.launch {
                 try {
                     val ref = FirebaseStorage.getInstance().reference
-                        .child("cars/${System.currentTimeMillis()}.jpg")
-                    ref.putFile(uri).await()
-                    val url = ref.downloadUrl.await().toString()
-                    imageUrls = imageUrls + url // <- aquí actualizas la lista visible
+                        .child("cars/${System.currentTimeMillis()}.jpg")// Ruta única con timestamp
+                    ref.putFile(uri).await()// Sube la imagen a Firebase Storage
+                    val url = ref.downloadUrl.await().toString()// Obtiene la URL pública
+                    imageUrls = imageUrls + url // Añade la URL a la lista de imágenes visibles
                 } catch (e: Exception) {
                     Toast.makeText(context, "Error al subir imagen", Toast.LENGTH_SHORT).show()
                 }
@@ -117,17 +117,18 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
     }
 
 
-    // Cargar coche actual
+    // Lógica que carga los datos del coche actual al entrar
     LaunchedEffect(carId) {
         try {
             val car = withContext(Dispatchers.IO) {
                 carVM.getCarById(carId)
             }
             if (car == null) {
-                Toast.makeText(context, "❌ No se encontró el coche", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "No se encontró el coche", Toast.LENGTH_SHORT).show()
                 navController.popBackStack()
                 return@LaunchedEffect
             }
+            // Cargamos todos los campos del coche a variables locales
             coche = car
             marca = car.marca
             modelo = car.modelo
@@ -147,15 +148,16 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
             automatico = car.automatico
             imageUrls = car.fotos
         } catch (e: Exception) {
-            Toast.makeText(context, "❌ Error al cargar el coche", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error al cargar el coche", Toast.LENGTH_SHORT).show()
             navController.popBackStack()
         }
     }
 
 
-
+    // Contenedor principal con scroll vertical y padding
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
 
+        // Título de la pantalla
         Text(
             "Editar publicación",
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -164,6 +166,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
         )
         Spacer(Modifier.height(12.dp))
 
+        // Sección de fotos del coche
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFEDEDED))
                 .padding(12.dp)
@@ -173,12 +176,15 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
+
+            // Ordenar imágenes para que la principal vaya primero
             val sortedUrls = buildList {
                 imageUrls.getOrNull(principalIndex)?.let { add(it) }
                 addAll(imageUrls.filterIndexed { i, _ -> i != principalIndex })
             }
-            val chunkedUrls = sortedUrls.chunked(2)
+            val chunkedUrls = sortedUrls.chunked(2) // Agrupar en filas de 2
 
+            // Mostrar miniaturas agrupadas por fila
             chunkedUrls.forEachIndexed { rowIndex, rowImages ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -189,6 +195,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
                         val isPrincipal = index == principalIndex
                         val label = if (url == imageUrls.getOrNull(principalIndex)) "PRINCIPAL" else "${sortedUrls.indexOf(url) + 1}"
 
+                        // Tarjeta de imagen
                         Box(Modifier.weight(1f)) {
                             Card(
                                 modifier = Modifier.height(160.dp),
@@ -213,6 +220,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
                                 }
                             }
 
+                            // Botón para eliminar la imagen
                             IconButton(
                                 onClick = {
                                     imageUrls =
@@ -249,6 +257,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
+            // Tarjeta para añadir más imágenes
             Card(
                 modifier = Modifier
                     .padding(end = 8.dp)
@@ -275,6 +284,8 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
         }
 
         Spacer(Modifier.height(12.dp))
+
+        // Campos de texto y desplegables
         DesplegableCampo("Marca", marca, marcas) { marca = it }
         OutlinedTextField(
             value = modelo,
@@ -292,6 +303,8 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
         DesplegableCampo("Combustible", combustible, combustibles) { combustible = it }
 
         Spacer(Modifier.height(12.dp))
+
+        // Selector de tipo de cambio automático/manual
         Text("Tipo de cambio", style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(8.dp))
         Row(
@@ -316,6 +329,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
             }
         }
 
+        // Selector de etiqueta ambiental
         val etiquetas = listOf(
             "🟦 Etiqueta CERO",
             "🟢🟦 Etiqueta ECO",
@@ -325,6 +339,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
         )
         DesplegableCampo("Etiqueta", etiqueta, etiquetas) { etiqueta = it }
 
+        // Campos numéricos
         OutlinedTextField(
             value = puertas,
             onValueChange = { puertas = it },
@@ -376,11 +391,15 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
         )
 
         Spacer(Modifier.height(12.dp))
+
+        // Estado para controlar si mostrar el diálogo de confirmación al borrar campos
         var showClearDialog by remember { mutableStateOf(false) }
 
+
+        // Botón para solicitar borrar todos los campos del formulario
         Button(
             onClick = {
-                showClearDialog = true
+                showClearDialog = true // Activa el diálogo
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
@@ -391,6 +410,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
             Text("Borrar campos")
         }
 
+        // Diálogo de confirmación de borrado de todos los campos
         if (showClearDialog) {
             AlertDialog(
                 onDismissRequest = { showClearDialog = false },
@@ -398,6 +418,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
                 text = { Text("Esta acción eliminará todo lo editado, incluidas las fotos cargadas. ¿Deseas continuar?") },
                 confirmButton = {
                     Button(onClick = {
+                        // Resetea todos los campos
                         marca = ""; modelo = ""; anio = ""; provincia = ""; ciudad = "";
                         combustible = ""; puertas = ""; plazas = ""; cilindrada = ""; potencia = "";
                         color = ""; kilometros = ""; precio = ""; descripcion = ""; etiqueta = "";
@@ -414,8 +435,11 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
                 }
             )
         }
+
+        // Botón para guardar los cambios realizados en Firestore
         Button(
             onClick = {
+                // Validación: si hay algún campo obligatorio vacío, muestra error
                 if (listOf(
                         marca,
                         modelo,
@@ -437,6 +461,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
                     return@Button
                 }
 
+                // Construcción del mapa de datos con valores convertidos
                 val db = FirebaseFirestore.getInstance()
                 val datos = mapOf(
                     "marca" to marca,
@@ -459,12 +484,13 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
                     "imageUrl" to imageUrls.getOrNull(principalIndex).orEmpty()
                 )
 
+                // Guardar cambios en Firestore
                 scope.launch {
                     db.collection("cars").document(carId).update(datos).addOnSuccessListener {
                         Toast.makeText(context, "✔ Cambios guardados", Toast.LENGTH_SHORT).show()
                         navController.popBackStack()
                     }.addOnFailureListener {
-                        Toast.makeText(context, "❌ Error: ${it.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Error: ${it.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             },
@@ -478,7 +504,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
         }
 
 
-        // ✅ Botón de cancelar edición
+        // Botón para cancelar la edición y volver atrás
         Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = { navController.popBackStack() },
@@ -491,6 +517,7 @@ fun EditarCoche(carId: String, navController: NavController, carVM: CarViewModel
             Text("Cancelar edición")
         }
 
+        // Diálogo para mostrar si hay campos obligatorios sin rellenar
         if (showErrorDialog) {
             AlertDialog(
                 onDismissRequest = { showErrorDialog = false },

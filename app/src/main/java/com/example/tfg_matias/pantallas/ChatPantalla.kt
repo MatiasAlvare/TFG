@@ -45,7 +45,7 @@ fun ChatPantalla(
 
     // Cargar mensajes al entrar
     LaunchedEffect(Unit) {
-        println("👁️ Entrando al chat con ID: $chatId (desde LaunchedEffect(Unit))")
+        println("Entrando al chat con ID: $chatId (desde LaunchedEffect(Unit))")
         chatVM.loadMessages(chatId)
         chatVM.markMessagesAsSeen(chatId)
     }
@@ -54,7 +54,7 @@ fun ChatPantalla(
 
     // Marcar como leídos cuando llegan mensajes
     LaunchedEffect(messages) {
-        println("📩 Mensajes actualizados, marcando como vistos: $chatId")
+        println("Mensajes actualizados, marcando como vistos: $chatId")
         chatVM.markMessagesAsSeen(chatId)
     }
 

@@ -31,7 +31,7 @@ import com.example.tfg_matias.R
 import com.example.tfg_matias.utilidades.AuthRes
 import com.example.tfg_matias.utilidades.AuthViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun Registrarse(
     onGoogleSignIn: () -> Unit = {},
@@ -121,9 +121,9 @@ fun Registrarse(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 8.dp)
         ) {
-            Divider(Modifier.weight(1f).height(1.dp), color = Color.Gray)
+            HorizontalDivider(Modifier.weight(1f).height(1.dp), color = Color.Gray)
             Text("  o  ", style = TextStyle(color = Color.Gray, fontSize = 14.sp))
-            Divider(Modifier.weight(1f).height(1.dp), color = Color.Gray)
+            HorizontalDivider(Modifier.weight(1f).height(1.dp), color = Color.Gray)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -290,7 +290,7 @@ fun Registrarse(
     LaunchedEffect(authResult) {
         when (authResult) {
             is AuthRes.Success -> {
-                vm.crearUsuarioSiNoExiste()  // ✅ AÑADIDO
+                vm.crearUsuarioSiNoExiste()
                 onRegisterCompleted()
                 vm.clearAuthResult()
             }
