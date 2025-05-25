@@ -1,4 +1,4 @@
-// EditarCoche.kt: copia exacta de Vender.kt con datos precargados y edición habilitada
+// EditarCoches.kt: copia exacta de Vender.kt con datos precargados y edición habilitada
 
 package com.example.tfg_matias.pantallas
 

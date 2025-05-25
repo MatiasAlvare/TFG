@@ -1,7 +1,5 @@
 // Detalle.kt completo con botón de retroceso flotante, bloques estilizados y etiquetas listas
 
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.example.tfg_matias.pantallas
 
 import androidx.compose.foundation.background

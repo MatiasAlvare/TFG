@@ -1,4 +1,3 @@
-// Paquete donde se encuentra este modelo de datos
 package com.example.tfg_matias.Model
 
 // Clase que representa un coche dentro de la aplicación
